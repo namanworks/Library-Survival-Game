@@ -1,0 +1,45 @@
+[gd_scene load_steps=5 format=3 uid="uid://lib_survivors_basechild"]
+
+[ext_resource type="Script" path="res://scripts/entities/BaseChild.gd" id="1_child_script"]
+
+[ext_resource type="Texture2D" path="res://assets/sprites/child.png" id="2_child_tex"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(18.0, 24.0)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_awareness"]
+radius = 240.0
+
+[node name="BaseChild" type="CharacterBody2D"]
+collision_layer = 8
+collision_mask = 2
+script = ExtResource("1_child_script")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_child_tex")
+scale = Vector2(0.8, 0.8)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+path_desired_distance = 8.0
+target_desired_distance = 16.0
+max_speed = 100.0
+
+[node name="AwarenessRadius" type="Area2D" parent="."]
+collision_layer = 64
+collision_mask = 4
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AwarenessRadius"]
+shape = SubResource("CircleShape2D_awareness")
+
+[node name="BookCarrySlot" type="Node2D" parent="."]
+position = Vector2(0.0, -20.0)
+
+[node name="StateLabel" type="Label" parent="."]
+position = Vector2(-30.0, -40.0)
+text = "IDLE"
+visible = false

@@ -1,0 +1,7 @@
+[gd_scene load_steps=3 format=3 uid="uid://lib_survivors_fortbuilder"]
+
+[ext_resource type="PackedScene" uid="uid://lib_survivors_basechild" path="res://scenes/entities/children/BaseChild.tscn" id="1_base_scene"]
+[ext_resource type="Script" path="res://scripts/entities/BookFortBuilder.gd" id="2_fort_script"]
+
+[node name="BookFortBuilder" instance=ExtResource("1_base_scene")]
+script = ExtResource("2_fort_script")

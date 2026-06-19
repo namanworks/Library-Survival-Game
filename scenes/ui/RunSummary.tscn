@@ -1,0 +1,128 @@
+[gd_scene load_steps=3 format=3 uid="uid://lib_survivors_runsummary"]
+
+[ext_resource type="Script" path="res://scripts/ui/RunSummary.gd" id="1_runsummary_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.05, 0.05, 0.12, 0.95)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.3, 0.5, 1.0)
+
+[node name="RunSummary" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_runsummary_script")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.0, 0.0, 0.0, 0.75)
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchor_left = 0.2
+anchor_top = 0.08
+anchor_right = 0.8
+anchor_bottom = 0.92
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+theme_override_constants/separation = 14
+
+[node name="HeaderLabel" type="Label" parent="Panel/VBox"]
+text = "The Library Closes In Perfect Order."
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(1.0, 0.85, 0.2, 1)
+autowrap_mode = 3
+
+[node name="Separator" type="HSeparator" parent="Panel/VBox"]
+
+[node name="StatsGrid" type="GridContainer" parent="Panel/VBox"]
+columns = 2
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 10
+
+[node name="TimeLabel" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "Survival Time:"
+theme_override_colors/font_color = Color(0.7, 0.7, 0.8, 1)
+
+[node name="TimeValue" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "00:00"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="BooksLabel" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "Books Shelved:"
+theme_override_colors/font_color = Color(0.7, 0.7, 0.8, 1)
+
+[node name="BooksValue" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "0"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="InterceptsLabel" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "Children Intercepted:"
+theme_override_colors/font_color = Color(0.7, 0.7, 0.8, 1)
+
+[node name="InterceptsValue" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "0"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="PeakChaosLabel" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "Peak Chaos:"
+theme_override_colors/font_color = Color(0.7, 0.7, 0.8, 1)
+
+[node name="PeakChaosValue" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "0%"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="XPLabel" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "Total XP Earned:"
+theme_override_colors/font_color = Color(0.7, 0.7, 0.8, 1)
+
+[node name="XPValue" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "0"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="ScoreLabel" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "Final Score:"
+theme_override_colors/font_color = Color(0.7, 0.7, 0.8, 1)
+
+[node name="ScoreValue" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "0"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="LevelLabel" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "Level Reached:"
+theme_override_colors/font_color = Color(0.7, 0.7, 0.8, 1)
+
+[node name="LevelValue" type="Label" parent="Panel/VBox/StatsGrid"]
+text = "Level 1"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="Separator2" type="HSeparator" parent="Panel/VBox"]
+
+[node name="ButtonRow" type="HBoxContainer" parent="Panel/VBox"]
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="PlayAgainButton" type="Button" parent="Panel/VBox/ButtonRow"]
+text = "PLAY AGAIN"
+custom_minimum_size = Vector2(160, 48)
+theme_override_font_sizes/font_size = 16
+
+[node name="MainMenuButton" type="Button" parent="Panel/VBox/ButtonRow"]
+text = "MAIN MENU"
+custom_minimum_size = Vector2(160, 48)
+theme_override_font_sizes/font_size = 16

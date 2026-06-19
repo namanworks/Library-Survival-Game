@@ -1,0 +1,7 @@
+[gd_scene load_steps=3 format=3 uid="uid://lib_survivors_influencer"]
+
+[ext_resource type="PackedScene" uid="uid://lib_survivors_basechild" path="res://scenes/entities/children/BaseChild.tscn" id="1_base_scene"]
+[ext_resource type="Script" path="res://scripts/entities/TeenInfluencer.gd" id="2_influencer_script"]
+
+[node name="TeenInfluencer" instance=ExtResource("1_base_scene")]
+script = ExtResource("2_influencer_script")

@@ -1,0 +1,1556 @@
+================================================================================
+  LIBRARY SURVIVORS
+  COMPLETE AI AGENT DEVELOPMENT SPECIFICATION
+  Version 1.0
+================================================================================
+
+  This document is the single source of truth for building Library Survivors.
+  It contains everything an AI coding agent needs: architecture, data schemas,
+  constants, scene trees, AI logic, event timelines, UI layouts, asset lists,
+  and a phased task plan. Read the entire document before writing any code.
+
+================================================================================
+  TABLE OF CONTENTS
+================================================================================
+
+  1.  Game Overview
+  2.  Tech Stack
+  3.  Project Folder Structure
+  4.  Scene Tree Specification
+  5.  Technical Architecture
+  6.  Data Schemas
+  7.  Game Constants & Tuning Values
+  8.  Input Map
+  9.  Child AI Behaviour (Pseudocode)
+  10. Chaos System Logic
+  11. Upgrade System
+  12. Event & Boss Timeline (Full 30-Minute Run)
+  13. Mid-Run Objectives
+  14. UI / UX Layout Specification
+  15. Map Layout Specification
+  16. Asset List
+  17. Audio Design Notes
+  18. Phased Development Plan (Week-by-Week Tasks)
+  19. Risk Log
+
+================================================================================
+  SECTION 1 — GAME OVERVIEW
+================================================================================
+
+  Genre:        2D top-down survival (Vampire Survivors-style)
+  Platform:     PC (Steam primary), optional mobile port post-launch
+  Win:          Survive 30 minutes without Chaos reaching 100%
+  Lose:         Chaos Meter reaches 100% at any point
+  Session:      Single run, 30 minutes, no save mid-run
+  Progression:  Within a single run only (XP → level up → pick upgrade)
+
+  CORE LOOP:
+    Children spawn → children remove books from shelves → books land on floor
+    → Chaos rises → librarian collects books → librarian returns books to shelf
+    → XP awarded → Chaos reduced → player levels up → picks upgrade
+    → repeat with more children and more chaos until Closing Time (30:00)
+
+  CORE TENSION:
+    Should the player clean existing floor books (safe, steady chaos reduction)
+    or chase children before they create new messes (risky, higher XP reward)?
+    Both strategies must remain viable throughout the run.
+
+================================================================================
+  SECTION 2 — TECH STACK
+================================================================================
+
+  ENGINE:         Godot 4.x (recommended)
+                  - Built-in 2D physics, navigation, signal system
+                  - Free, MIT license, no royalties
+                  - GDScript is fast to prototype with
+                  ALTERNATIVE: Unity 2D with C# (larger community, more assets)
+                  All pseudocode in this document uses Godot/GDScript conventions.
+
+  LANGUAGE:       GDScript (Godot) or C# (Unity)
+
+  NAVIGATION:     Godot NavigationServer2D with NavigationRegion2D
+                  - Used for child pathfinding to shelves and flee paths
+                  - Bake navmesh on scene load; rebake if map changes
+
+  PHYSICS:        Godot CharacterBody2D for librarian and children
+                  Godot Area2D for pickup radius, flee radius, chaos zones
+
+  UI:             Godot CanvasLayer + Control nodes
+                  - HUD is a separate CanvasLayer (always on top)
+                  - Upgrade picker is a separate CanvasLayer (modal)
+
+  PERSISTENCE:    Godot ConfigFile for settings
+                  JSON file for high score / run history
+
+  VERSION CONTROL: Git + GitHub (private repo)
+                   Branching: main (stable) + dev (active) + feature/* branches
+
+  PROJECT MGMT:   GitHub Issues — one issue per checkbox task in Section 18
+
+  ART TOOLS:      Aseprite (pixel art sprites and animations)
+                  Tiled or Godot TileMap editor (map layout)
+
+  AUDIO TOOLS:    Audacity (SFX editing and export)
+                  LMMS or GarageBand (music composition)
+                  Export all audio as OGG Vorbis for Godot
+
+  PLAYTESTING:    Google Forms (post-session survey)
+                  OBS Studio (session recording)
+
+================================================================================
+  SECTION 3 — PROJECT FOLDER STRUCTURE
+================================================================================
+
+  res://
+  ├── scenes/
+  │   ├── main/
+  │   │   ├── Main.tscn              # Root game scene
+  │   │   ├── GameOver.tscn          # Chaos = 100% screen
+  │   │   └── WinScreen.tscn         # Closing Time win screen
+  │   ├── library/
+  │   │   ├── Library.tscn           # The playfield (TileMap + zones)
+  │   │   └── Bookshelf.tscn         # Individual shelf node
+  │   ├── entities/
+  │   │   ├── Librarian.tscn         # Player character
+  │   │   ├── Book.tscn              # Book object (floor/carried states)
+  │   │   └── children/
+  │   │       ├── BaseChild.tscn     # Parent scene for all child types
+  │   │       ├── CuriousChild.tscn
+  │   │       ├── SpeedReader.tscn
+  │   │       ├── BookFortBuilder.tscn
+  │   │       ├── HideAndSeekKid.tscn
+  │   │       ├── SugarRushKid.tscn
+  │   │       └── TeenInfluencer.tscn
+  │   ├── ui/
+  │   │   ├── HUD.tscn
+  │   │   ├── UpgradePicker.tscn
+  │   │   ├── UpgradeCard.tscn
+  │   │   ├── RunSummary.tscn
+  │   │   ├── ObjectiveTracker.tscn
+  │   │   └── EventBanner.tscn
+  │   └── automation/
+  │       ├── AssistantLibrarian.tscn
+  │       ├── VolunteerStudent.tscn
+  │       ├── LibraryCat.tscn
+  │       └── ReturnRobot.tscn
+  ├── scripts/
+  │   ├── autoloads/
+  │   │   ├── ChaosManager.gd        # Singleton — global chaos state
+  │   │   ├── GameManager.gd         # Singleton — run state, timer, win/lose
+  │   │   ├── EventManager.gd        # Singleton — event scheduling
+  │   │   ├── UpgradeManager.gd      # Singleton — active upgrades, pool
+  │   │   └── AudioManager.gd        # Singleton — music, SFX playback
+  │   ├── entities/
+  │   │   ├── Librarian.gd
+  │   │   ├── Inventory.gd
+  │   │   ├── Book.gd
+  │   │   ├── Bookshelf.gd
+  │   │   ├── BaseChild.gd
+  │   │   ├── CuriousChild.gd
+  │   │   ├── SpeedReader.gd
+  │   │   ├── BookFortBuilder.gd
+  │   │   ├── HideAndSeekKid.gd
+  │   │   ├── SugarRushKid.gd
+  │   │   └── TeenInfluencer.gd
+  │   ├── systems/
+  │   │   ├── ChildSpawner.gd
+  │   │   ├── BookManager.gd
+  │   │   ├── ObjectiveSystem.gd
+  │   │   └── DifficultyScaler.gd
+  │   └── ui/
+  │       ├── HUD.gd
+  │       ├── UpgradePicker.gd
+  │       ├── UpgradeCard.gd
+  │       └── RunSummary.gd
+  ├── data/
+  │   ├── upgrades.json              # All upgrade definitions
+  │   ├── child_types.json           # Child stat tables
+  │   ├── events.json                # Event definitions and timing
+  │   └── objectives.json            # Objective definitions
+  ├── assets/
+  │   ├── sprites/
+  │   │   ├── librarian/
+  │   │   ├── children/
+  │   │   ├── books/
+  │   │   ├── environment/
+  │   │   └── ui/
+  │   ├── audio/
+  │   │   ├── sfx/
+  │   │   └── music/
+  │   └── fonts/
+  └── project.godot
+
+================================================================================
+  SECTION 4 — SCENE TREE SPECIFICATION
+================================================================================
+
+  Every scene's node hierarchy is defined here. Build exactly these structures.
+
+  ─────────────────────────────────────────────────────────────
+  Main.tscn
+  ─────────────────────────────────────────────────────────────
+  Node2D (Main) [Main.gd]
+  ├── Library (Node2D) [Library.tscn instantiated]
+  ├── Librarian (CharacterBody2D) [Librarian.tscn instantiated]
+  ├── ChildSpawner (Node) [ChildSpawner.gd]
+  │   └── Children (Node2D)          # runtime child of all spawned children
+  ├── BookManager (Node) [BookManager.gd]
+  │   └── FloorBooks (Node2D)        # parent of all floor Book nodes
+  ├── AutomationUnits (Node2D)       # parent of assistant librarian etc.
+  └── HUD (CanvasLayer) [HUD.tscn instantiated]
+
+  ─────────────────────────────────────────────────────────────
+  Library.tscn
+  ─────────────────────────────────────────────────────────────
+  Node2D (Library)
+  ├── TileMapLayer (floor tiles)
+  ├── TileMapLayer (wall/shelf tiles)
+  ├── NavigationRegion2D             # navmesh for child pathfinding
+  ├── Shelves (Node2D)
+  │   └── [Bookshelf.tscn x N]      # one per shelf zone
+  ├── SpawnPoints (Node2D)
+  │   └── [Marker2D x 8]            # child spawn locations at map edges
+  ├── Zones (Node2D)
+  │   ├── ReadingTables (Area2D)     # book drop destination
+  │   ├── StudyArea (Area2D)         # book drop destination
+  │   ├── ChildrensSection (Area2D)  # book drop destination + special zone
+  │   └── ReadingAreaObjective (Area2D) # used by objectives
+  └── ShortcutDoors (Node2D)         # unlocked by Staff Passages upgrade
+
+  ─────────────────────────────────────────────────────────────
+  Bookshelf.tscn
+  ─────────────────────────────────────────────────────────────
+  Area2D (Bookshelf) [Bookshelf.gd]
+  ├── CollisionShape2D               # shelf footprint (Rectangle)
+  ├── Sprite2D                       # shelf visual (3 states: full/partial/empty)
+  ├── ShelfLabel (Label)             # genre label (debug, hide in release)
+  └── ReturnZone (Area2D)            # librarian enters this to trigger shelving
+      └── CollisionShape2D
+
+  Properties on Bookshelf:
+    genre: String                    # e.g. "science", "fiction", "children"
+    active: bool                     # false = locked (unlocks over time)
+    books_on_shelf: int              # current count
+    max_books: int                   # capacity
+
+  ─────────────────────────────────────────────────────────────
+  Librarian.tscn
+  ─────────────────────────────────────────────────────────────
+  CharacterBody2D (Librarian) [Librarian.gd]
+  ├── CollisionShape2D               # player hitbox
+  ├── Sprite2D                       # librarian sprite
+  ├── AnimationPlayer                # walk, idle, shelve, pickup anims
+  ├── PickupRadius (Area2D)          # auto-pickup books within radius
+  │   └── CollisionShape2D (Circle, r=PICKUP_RADIUS)
+  ├── AwarenessRadiusVisual (Node2D) # optional visual ring for flee radius
+  └── Inventory (Node) [Inventory.gd]
+
+  ─────────────────────────────────────────────────────────────
+  Book.tscn
+  ─────────────────────────────────────────────────────────────
+  RigidBody2D (Book) [Book.gd]       # RigidBody for drop physics feel
+  ├── CollisionShape2D
+  ├── Sprite2D                       # genre-colored book sprite
+  └── HighlightEffect (Node2D)       # glow when on floor (hidden when shelved)
+
+  ─────────────────────────────────────────────────────────────
+  BaseChild.tscn  (all child types inherit/extend this)
+  ─────────────────────────────────────────────────────────────
+  CharacterBody2D (BaseChild) [BaseChild.gd]
+  ├── CollisionShape2D
+  ├── Sprite2D
+  ├── AnimationPlayer
+  ├── NavigationAgent2D              # handles pathfinding
+  ├── AwarenessRadius (Area2D)       # detects librarian entry for flee
+  │   └── CollisionShape2D (Circle, r=flee_radius)
+  ├── BookCarrySlot (Node2D)         # visual position of carried book
+  └── StateLabel (Label)             # debug only — shows current AI state
+
+  ─────────────────────────────────────────────────────────────
+  HUD.tscn
+  ─────────────────────────────────────────────────────────────
+  CanvasLayer (HUD) [HUD.gd]
+  ├── ChaosBar (Control)
+  │   ├── Background (TextureRect)
+  │   ├── FillBar (ProgressBar)
+  │   └── ChaosLabel (Label)         # "CHAOS  42%"
+  ├── TimerDisplay (Label)            # "14:32"
+  ├── XPBar (Control)
+  │   ├── FillBar (ProgressBar)
+  │   └── LevelLabel (Label)          # "LVL 4"
+  ├── InventoryBelt (HBoxContainer)
+  │   └── [InventorySlot x MAX_INVENTORY] # each slot shows book or empty
+  ├── ObjectiveTracker (VBoxContainer) [ObjectiveTracker.gd]
+  │   └── [ObjectiveEntry x 2]        # active objectives
+  └── EventBanner (Control) [EventBanner.gd]
+      └── BannerLabel (Label)         # "SCHOOL FIELD TRIP INCOMING!"
+
+  ─────────────────────────────────────────────────────────────
+  UpgradePicker.tscn
+  ─────────────────────────────────────────────────────────────
+  CanvasLayer (UpgradePicker) [UpgradePicker.gd]
+  └── Panel (Control)                 # darkened modal background
+      ├── Title (Label)               # "LEVEL UP — Choose an upgrade"
+      └── CardContainer (HBoxContainer)
+          └── [UpgradeCard.tscn x 3]  # 3 random upgrade cards
+
+  UpgradeCard.tscn:
+  PanelContainer (UpgradeCard) [UpgradeCard.gd]
+  ├── Icon (TextureRect)
+  ├── UpgradeName (Label)
+  ├── Category (Label)
+  ├── Description (Label)
+  └── SelectButton (Button)
+
+================================================================================
+  SECTION 5 — TECHNICAL ARCHITECTURE
+================================================================================
+
+  AUTOLOADS (Singletons — registered in Project Settings → Autoload)
+  ─────────────────────────────────────────────────────────────
+
+  ChaosManager.gd
+    Purpose: Single source of truth for chaos state
+    Properties:
+      chaos_percent: float           # 0.0 to 100.0
+      floor_book_count: int          # updated by BookManager
+      cluster_bonus: float           # calculated from cluster detection
+      passive_chaos_rate: float      # base rate per second from elite children
+    Methods:
+      add_chaos(amount: float)
+      reduce_chaos(amount: float)
+      get_chaos_rate() -> float      # total chaos per second right now
+      update_from_books(count: int, cluster_bonus: float)
+    Signals:
+      chaos_changed(new_percent: float)
+      chaos_critical()               # fires when > 80%
+      chaos_maxed()                  # fires at 100% → game over
+
+  GameManager.gd
+    Purpose: Run state, timer, win/lose, score
+    Properties:
+      run_time: float                # seconds elapsed
+      score: int
+      books_shelved: int
+      children_intercepted: int
+      peak_chaos: float
+      is_running: bool
+    Methods:
+      start_run()
+      end_run(won: bool)
+      add_score(amount: int)
+      get_run_time_string() -> String  # returns "MM:SS"
+    Signals:
+      run_started()
+      run_ended(won: bool)
+      closing_time_triggered()
+
+  EventManager.gd
+    Purpose: Schedule and fire special events and boss events
+    Properties:
+      event_queue: Array             # sorted by trigger_time
+      active_event: Dictionary       # currently running event or null
+    Methods:
+      schedule_events()              # called on run start, loads events.json
+      tick(delta: float)             # called every frame, checks trigger times
+      trigger_event(event_id: String)
+      end_event()
+    Signals:
+      event_started(event_data: Dictionary)
+      event_ended(event_id: String)
+
+  UpgradeManager.gd
+    Purpose: Manage available upgrades, active upgrades, apply effects
+    Properties:
+      upgrade_pool: Array            # all upgrades from upgrades.json
+      active_upgrades: Dictionary    # upgrade_id -> stack_count
+    Methods:
+      get_random_upgrades(count: int) -> Array   # returns 3 upgrade dicts
+      apply_upgrade(upgrade_id: String)
+      get_effect_value(upgrade_id: String) -> float
+      has_upgrade(upgrade_id: String) -> bool
+    Signals:
+      upgrade_applied(upgrade_id: String)
+
+  AudioManager.gd
+    Purpose: Centralized audio playback with state-driven music
+    Methods:
+      play_sfx(sfx_name: String)
+      play_music(track_name: String, crossfade: bool)
+      set_chaos_ambience_level(chaos_percent: float)
+    NOTE: Music layers in/out dynamically based on chaos level.
+
+  ─────────────────────────────────────────────────────────────
+  SIGNAL FLOW DIAGRAM
+  ─────────────────────────────────────────────────────────────
+
+  Book shelved:
+    Bookshelf → emits book_shelved(genre)
+    → Librarian.gd receives → removes from inventory → awards XP
+    → ChaosManager.reduce_chaos(CHAOS_REDUCTION_PER_BOOK)
+    → GameManager.add_score(SCORE_PER_BOOK)
+    → BookManager notified → decrements floor_book_count
+
+  Child intercepted:
+    Librarian.gd detects child in body_entered
+    → Child.drop_book() → Book spawned on floor
+    → Librarian auto-picks up (PickupRadius fires)
+    → XP bonus awarded (INTERCEPT_XP_BONUS)
+    → AudioManager.play_sfx("intercept")
+
+  Chaos changes:
+    ChaosManager.chaos_changed(new_percent)
+    → HUD.gd updates chaos bar fill and color
+    → AudioManager.set_chaos_ambience_level(new_percent)
+    → if new_percent >= 100: GameManager.end_run(false)
+
+  Level up:
+    Librarian.gd XP threshold crossed
+    → GameManager pauses (get_tree().paused = true)
+    → UpgradePicker shown with 3 random upgrades
+    → Player selects → UpgradeManager.apply_upgrade(id)
+    → get_tree().paused = false
+
+  ─────────────────────────────────────────────────────────────
+  KEY DESIGN PATTERNS
+  ─────────────────────────────────────────────────────────────
+
+  Object Pooling (CRITICAL — implement in Phase 1, not Phase 5):
+    Book objects must use an object pool. At minute 30, up to 5,000 books
+    are active. Instantiating/freeing nodes at that scale causes hitches.
+    Implement BookPool singleton or integrate into BookManager.
+
+  Child Type Extension:
+    All child types extend BaseChild.gd and override these methods:
+      _get_stats() -> Dictionary         # returns this type's base stats
+      _on_reach_shelf(shelf: Bookshelf)  # behavior at shelf
+      _get_flee_direction() -> Vector2   # default: away from librarian
+      _on_book_dropped()                 # called when intercept occurs
+
+  Data-Driven Tuning:
+    ALL numeric values (speeds, radii, chaos rates, XP values) must come
+    from constants defined in a single GameConstants.gd or from JSON files.
+    NEVER hardcode magic numbers in logic scripts. This enables tuning
+    without code changes during balance pass.
+
+================================================================================
+  SECTION 6 — DATA SCHEMAS
+================================================================================
+
+  ─────────────────────────────────────────────────────────────
+  BOOK SCHEMA
+  ─────────────────────────────────────────────────────────────
+  {
+    "id": String,                    # unique e.g. "book_science_001"
+    "genre": String,                 # must match a Bookshelf.genre value
+    "state": Enum,                   # SHELVED | ON_FLOOR | CARRIED
+    "chaos_weight": float,           # default 1.0; rare books may be 0.5
+    "is_rare": bool,                 # rare editions (Summer Reading event)
+    "carried_by": NodePath | null    # reference to child carrying it
+  }
+
+  Valid genres: "science", "fiction", "history", "children",
+                "reference", "biography", "mystery", "rare"
+
+  ─────────────────────────────────────────────────────────────
+  CHILD SCHEMA (child_types.json)
+  ─────────────────────────────────────────────────────────────
+  {
+    "type_id": String,               # "curious_child", "speed_reader", etc.
+    "display_name": String,
+    "base_move_speed": float,        # pixels per second
+    "flee_speed_multiplier": float,  # applied to base_move_speed when fleeing
+    "flee_radius": float,            # pixels — librarian detection range
+    "boldness": float,               # 0.0 (fully flees) to 1.0 (ignores librarian)
+    "carry_probability": float,      # 0.0–1.0 chance to carry vs local drop
+    "carry_distance_max": float,     # max pixels from shelf to drop destination
+    "books_per_visit": int,          # how many books removed per shelf visit
+    "chaos_passive_rate": float,     # chaos/sec contributed passively (elite only)
+    "spawn_weight_early": float,     # relative spawn weight minutes 0–10
+    "spawn_weight_mid": float,       # relative spawn weight minutes 10–20
+    "spawn_weight_late": float,      # relative spawn weight minutes 20–30
+    "xp_intercept_bonus": int        # bonus XP for intercepting this type
+  }
+
+  Example entry:
+  {
+    "type_id": "speed_reader",
+    "display_name": "Speed Reader",
+    "base_move_speed": 120.0,
+    "flee_speed_multiplier": 1.4,
+    "flee_radius": 200.0,
+    "boldness": 0.1,
+    "carry_probability": 0.85,
+    "carry_distance_max": 600.0,
+    "books_per_visit": 1,
+    "chaos_passive_rate": 0.0,
+    "spawn_weight_early": 0.2,
+    "spawn_weight_mid": 0.5,
+    "spawn_weight_late": 0.8,
+    "xp_intercept_bonus": 15
+  }
+
+  ─────────────────────────────────────────────────────────────
+  UPGRADE SCHEMA (upgrades.json)
+  ─────────────────────────────────────────────────────────────
+  {
+    "id": String,                    # "comfortable_shoes", "dewey_vacuum", etc.
+    "display_name": String,
+    "category": String,              # "mobility"|"collection"|"shelving"|
+                                     # "crowd_control"|"automation"
+    "description": String,           # shown on upgrade card
+    "effect_type": String,           # "stat_modifier"|"unlock"|"active_ability"
+    "effect_target": String,         # e.g. "move_speed", "pickup_radius"
+    "effect_value": float,           # multiplier or flat value per stack
+    "max_stacks": int,               # 1 for uniques, 3 for stackable
+    "rarity": String,                # "common"|"rare"
+    "min_level": int,                # earliest level this can appear
+    "icon": String                   # path to icon sprite
+  }
+
+  ─────────────────────────────────────────────────────────────
+  EVENT SCHEMA (events.json)
+  ─────────────────────────────────────────────────────────────
+  {
+    "id": String,
+    "display_name": String,
+    "trigger_time": float,           # seconds into run (0–1800)
+    "is_boss": bool,
+    "duration": float,               # seconds (-1 = instant)
+    "warning_time": float,           # seconds before trigger to show banner
+    "effects": [
+      {
+        "type": String,              # "spawn_wave"|"chaos_multiplier"|
+                                     # "speed_multiplier"|"spawn_rate_mult"|
+                                     # "rare_books_appear"|"open_shop"
+        "value": float,
+        "target": String             # child type or "all"
+      }
+    ],
+    "xp_reward": int,                # XP on surviving the event
+    "banner_text": String            # shown in EventBanner HUD element
+  }
+
+  ─────────────────────────────────────────────────────────────
+  OBJECTIVE SCHEMA (objectives.json)
+  ─────────────────────────────────────────────────────────────
+  {
+    "id": String,
+    "display_name": String,
+    "description": String,
+    "time_limit": float,             # seconds to complete (-1 = no limit)
+    "completion_condition": String,  # "books_returned"|"zone_cleared"|
+                                     # "specific_child_intercepted"
+    "target_count": int,             # number needed (e.g. 5 books)
+    "target_zone": String | null,    # zone node name if applicable
+    "xp_reward": int,
+    "score_reward": int,
+    "chaos_reduction_reward": float  # chaos % reduced on completion
+  }
+
+================================================================================
+  SECTION 7 — GAME CONSTANTS & TUNING VALUES
+================================================================================
+
+  All values live in scripts/autoloads/GameConstants.gd (or equivalent).
+  NEVER use raw numbers in logic — always reference these constants.
+
+  ── LIBRARIAN ──────────────────────────────────────────────
+  BASE_MOVE_SPEED           = 100.0   # pixels/sec
+  PICKUP_RADIUS             = 60.0    # pixels
+  SHELVING_TIME             = 0.3     # seconds animation before XP fires
+  STARTING_INVENTORY        = 5       # books
+
+  ── XP & LEVELLING ─────────────────────────────────────────
+  XP_PER_BOOK_SHELVED       = 10
+  XP_INTERCEPT_BASE         = 20      # base bonus for interception
+  XP_OBJECTIVE_REWARD       = 80
+  XP_EVENT_SURVIVAL         = 50
+
+  XP_CURVE = [               # XP required to reach each level
+    0,                       # Level 1 (start)
+    100,                     # Level 2
+    250,                     # Level 3 (100+150)
+    475,                     # Level 4 (+225)
+    815,                     # Level 5 (+340)
+    1325,                    # Level 6 (+510)
+    2090,                    # Level 7 (+765)
+    # continue at ~x1.5 multiplier per level
+  ]
+
+  ── CHAOS SYSTEM ───────────────────────────────────────────
+  CHAOS_RATE_PER_BOOK       = 0.05    # chaos %/sec per floor book
+  CHAOS_CLUSTER_THRESHOLD   = 5       # min books in cluster to trigger bonus
+  CHAOS_CLUSTER_RADIUS      = 80.0    # pixels — cluster detection range
+  CHAOS_CLUSTER_MULTIPLIER  = 1.5     # bonus chaos rate multiplier per cluster
+  CHAOS_REDUCTION_PER_BOOK  = 2.0     # chaos % removed per book shelved
+  CHAOS_INTERCEPT_REDUCTION = 1.0     # chaos % removed per child intercepted
+
+  ── SCORING ────────────────────────────────────────────────
+  SCORE_PER_BOOK_SHELVED    = 100
+  SCORE_INTERCEPT_BONUS     = 200
+  SCORE_OBJECTIVE_COMPLETE  = 500
+
+  ── CHILD SPAWNING ─────────────────────────────────────────
+  INITIAL_CHILD_COUNT       = 2       # children active at run start
+  SPAWN_INTERVAL_START      = 15.0    # seconds between spawns at minute 0
+  SPAWN_INTERVAL_END        = 4.0     # seconds between spawns at minute 30
+  MAX_CHILDREN_ON_MAP       = 80      # hard cap
+
+  ── ACTIVE BOOK COUNT RAMP (books available to be removed) ─
+  ACTIVE_BOOKS_MINUTE_0     = 500
+  ACTIVE_BOOKS_MINUTE_10    = 1500
+  ACTIVE_BOOKS_MINUTE_20    = 3000
+  ACTIVE_BOOKS_MINUTE_30    = 5000
+  # Interpolate between these values using a curve
+
+  ── CHILD BOLDNESS RAMP (flee radius multiplier over time) ─
+  BOLDNESS_MULTIPLIER_MIN_0  = 1.0    # full flee radius at start
+  BOLDNESS_MULTIPLIER_MIN_30 = 0.35   # 35% flee radius at end
+  # Lerp linearly between these values over the run
+
+  ── UPGRADE EFFECT VALUES ──────────────────────────────────
+  UPGRADE_COMFORTABLE_SHOES_SPEED   = 0.10  # +10% speed per stack
+  UPGRADE_LIBRARY_SCOOTER_SPEED     = 0.50  # +50% speed (unique)
+  UPGRADE_MAGNETIC_BOOKMARK_RADIUS  = 0.50  # +50% pickup radius per stack
+  UPGRADE_LIGHTNING_SHELVER_TIME    = 0.50  # shelving time x0.5 per stack
+  UPGRADE_STERN_GLARE_SLOW          = 0.25  # children 25% slower nearby
+  UPGRADE_SHUSHING_COOLDOWN         = 10.0  # seconds between pulses
+  UPGRADE_STORY_TIME_DURATION       = 5.0   # seconds children are gathered
+  UPGRADE_STORY_TIME_COOLDOWN       = 45.0  # seconds between activations
+  UPGRADE_PARENT_CALL_COOLDOWN      = 60.0  # seconds between uses
+
+  ── AUTOMATION UNIT STATS ──────────────────────────────────
+  ASSISTANT_INVENTORY               = 3
+  ASSISTANT_PATROL_SPEED            = 70.0
+  VOLUNTEER_INVENTORY               = 5
+  VOLUNTEER_FOLLOW_DISTANCE         = 80.0  # follows this close to librarian
+  LIBRARY_CAT_RADIUS                = 150.0 # boldness reduction radius
+  LIBRARY_CAT_BOLDNESS_REDUCTION    = 0.3   # reduces child boldness by 30%
+  RETURN_ROBOT_RADIUS               = 100.0 # auto-shelves books within this
+
+  ── CLOSING TIME ───────────────────────────────────────────
+  RUN_DURATION                      = 1800.0  # 30 minutes in seconds
+  CLOSING_TIME_CHAOS_SPIKE          = 15.0    # instant chaos % added
+  CLOSING_TIME_WAVE_DURATION        = 30.0    # seconds of final wave
+
+================================================================================
+  SECTION 8 — INPUT MAP
+================================================================================
+
+  Register these in Godot Project Settings → Input Map:
+
+  ACTION NAME          KEYBOARD          GAMEPAD
+  ─────────────────────────────────────────────────────────────
+  move_up              W / Up Arrow      Left Stick Up
+  move_down            S / Down Arrow    Left Stick Down
+  move_left            A / Left Arrow    Left Stick Left
+  move_right           D / Right Arrow   Left Stick Right
+  ui_accept            Enter / Space     A / Cross button
+  ui_cancel            Escape            B / Circle button
+  pause                Escape            Start button
+  ability_1            Q                 Left Bumper (LB)
+  ability_2            E                 Right Bumper (RB)
+
+  NOTE: Pickup, shelving, and interception are ALL automatic — no manual
+  button presses required. The player only controls movement and active
+  abilities (Story Time, Parent Phone Call).
+
+  MOUSE: Upgrade picker cards are clickable. No other mouse interaction
+  is required during gameplay (movement is keyboard/gamepad only).
+
+================================================================================
+  SECTION 9 — CHILD AI BEHAVIOUR (PSEUDOCODE)
+================================================================================
+
+  All children use a simple state machine. States are:
+    IDLE, MOVING_TO_SHELF, AT_SHELF, CARRYING_BOOK, DROPPING_BOOK, FLEEING
+
+  ─────────────────────────────────────────────────────────────
+  BASE CHILD LOGIC (all types start here, then override)
+  ─────────────────────────────────────────────────────────────
+
+  func _physics_process(delta):
+    check_flee_condition()           # overrides current state if true
+    match current_state:
+      IDLE:       handle_idle()
+      MOVING_TO_SHELF: handle_moving_to_shelf()
+      AT_SHELF:   handle_at_shelf()
+      CARRYING_BOOK: handle_carrying()
+      DROPPING_BOOK: handle_dropping()
+      FLEEING:    handle_fleeing()
+
+  func check_flee_condition():
+    if librarian is within flee_radius AND boldness_check_passes():
+      current_state = FLEEING
+      flee_direction = position - librarian.position  # away from librarian
+
+  func boldness_check_passes() -> bool:
+    # boldness 0.0 = always flee, 1.0 = never flee
+    effective_boldness = boldness * (1.0 - current_global_boldness_modifier)
+    return randf() > effective_boldness
+
+  func handle_idle():
+    idle_timer -= delta
+    if idle_timer <= 0:
+      target_shelf = find_nearest_active_shelf()
+      if target_shelf:
+        navigate_to(target_shelf.position)
+        current_state = MOVING_TO_SHELF
+
+  func handle_moving_to_shelf():
+    move_along_nav_path()
+    if arrived_at_target():
+      current_state = AT_SHELF
+
+  func handle_at_shelf():
+    # override per child type
+    remove_book_from_shelf()
+    if randf() < carry_probability:
+      current_state = CARRYING_BOOK
+      drop_destination = choose_carry_destination()
+    else:
+      drop_book_locally()           # drops adjacent to shelf
+      current_state = IDLE
+      idle_timer = randf_range(1.0, 3.0)
+
+  func handle_carrying():
+    navigate_to(drop_destination)
+    if arrived_at_target():
+      current_state = DROPPING_BOOK
+
+  func handle_dropping():
+    carried_book.state = Book.State.ON_FLOOR
+    carried_book.drop_at(position)
+    carried_book = null
+    current_state = IDLE
+
+  func handle_fleeing():
+    flee_target = position + (flee_direction.normalized() * 200.0)
+    navigate_to(flee_target)
+    if librarian outside flee_radius:
+      current_state = IDLE          # stop fleeing when safe
+
+  func on_librarian_touch():        # called by Librarian when bodies overlap
+    if carried_book:
+      drop_book_at(position)        # book lands here
+      emit_signal("intercepted", self)
+    # child continues in FLEEING state
+
+  ─────────────────────────────────────────────────────────────
+  CURIOUS CHILD overrides:
+    carry_probability: 0.5
+    books_per_visit: 1
+    No overrides to base logic — this IS the base behavior.
+
+  SPEED READER overrides:
+    base_move_speed: 120.0
+    carry_probability: 0.85
+    choose_carry_destination():
+      # prefers far zones: reading tables, study areas, opposite end of map
+      return farthest_available_zone()
+
+  BOOK FORT BUILDER overrides:
+    handle_at_shelf():
+      for i in books_per_visit:     # removes 2–4 books
+        remove_book_from_shelf()
+        drop_book_at(position + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
+      current_state = IDLE
+    # never carries — always drops at shelf creating local pile
+
+  HIDE AND SEEK KID overrides:
+    func navigate_to(target):
+      # adds random waypoints to path for zigzag movement
+      waypoints = [random_point_1, random_point_2, target]
+      navigate_via_waypoints(waypoints)
+    choose_carry_destination():
+      return random_walkable_point_on_map()   # scatter pattern
+
+  SUGAR RUSH KID overrides:
+    base_move_speed: 180.0
+    books_per_visit: 1
+    handle_at_shelf():
+      remove_book_from_shelf()
+      drop_book_locally()
+      current_state = IDLE          # immediately leaves for next shelf
+      idle_timer = 0.2              # very short idle
+
+  TEEN INFLUENCER overrides:
+    On spawn: create ChaosZone Area2D around self (radius 150px)
+    ChaosZone effect: children within zone get +0.3 chaos_passive_rate
+    On intercept/removal: destroy ChaosZone
+    Movement: standard base behavior
+
+  ─────────────────────────────────────────────────────────────
+  HERDING MECHANIC DETAIL
+  ─────────────────────────────────────────────────────────────
+
+  The librarian's movement passively influences child flee vectors.
+  There is no explicit "herd" button — it emerges from movement.
+
+  When child is in FLEEING state:
+    flee_direction = normalize(child.position - librarian.position)
+    flee_target = child.position + flee_direction * 200.0
+    navigate_to(flee_target)
+
+  Player can exploit this by:
+    - Approaching from one side to push child away
+    - Positioning to funnel flee paths toward corners
+    - Circling around a group to corral them
+
+  Children in FLEEING state CANNOT remove books from shelves.
+  This is the core value of herding — temporary disruption prevention.
+
+================================================================================
+  SECTION 10 — CHAOS SYSTEM LOGIC
+================================================================================
+
+  CHAOS CALCULATION (runs every frame in ChaosManager._process):
+
+  func _process(delta):
+    # Base chaos from floor books
+    base_rate = floor_book_count * CHAOS_RATE_PER_BOOK
+
+    # Cluster bonus
+    cluster_count = detect_clusters()
+    cluster_rate = cluster_count * base_rate * (CHAOS_CLUSTER_MULTIPLIER - 1.0)
+
+    # Passive chaos from elite children
+    total_passive = sum of chaos_passive_rate for each active elite child
+
+    # Event multiplier (set by EventManager during active events)
+    event_mult = active_event_chaos_multiplier  # default 1.0
+
+    # Total chaos rate this frame
+    total_rate = (base_rate + cluster_rate + total_passive) * event_mult
+
+    add_chaos(total_rate * delta)
+
+  CLUSTER DETECTION:
+    func detect_clusters() -> int:
+      clusters = 0
+      checked = {}
+      for each floor_book in all_floor_books:
+        if floor_book in checked: continue
+        nearby = get_books_within_radius(floor_book.position, CHAOS_CLUSTER_RADIUS)
+        if nearby.size() >= CHAOS_CLUSTER_THRESHOLD:
+          clusters += 1
+          checked.merge(nearby)
+      return clusters
+
+  NOTE: Cluster detection is expensive at high book counts.
+  Run it every 0.5 seconds (not every frame) and cache the result.
+
+  CHAOS REDUCTION:
+    Book shelved:     chaos -= CHAOS_REDUCTION_PER_BOOK
+    Child intercepted: chaos -= CHAOS_INTERCEPT_REDUCTION
+    Objective complete: chaos -= objective.chaos_reduction_reward
+    Certain upgrades: passive chaos reduction rate
+
+  CHAOS VISUAL STATES (update HUD colors):
+    0–49%:   Green    — calm
+    50–69%:  Yellow   — warning
+    70–89%:  Orange   — danger
+    90–99%:  Red      — critical (bar pulses)
+    100%:    Game Over
+
+================================================================================
+  SECTION 11 — UPGRADE SYSTEM
+================================================================================
+
+  UPGRADE CATEGORIES AND FULL LIST:
+
+  MOBILITY:
+    comfortable_shoes   +10% speed per stack (max 3)          common
+    library_scooter     +50% speed, unique                     rare    (min lvl 4)
+    staff_passages      unlock shortcut doors on map, unique   rare    (min lvl 3)
+
+  COLLECTION:
+    magnetic_bookmark   +50% pickup radius per stack (max 2)  common
+    dewey_vacuum        books slowly attract to player         rare    (min lvl 3)
+    book_lasso          every 8s pull all books within 200px  rare    (min lvl 5)
+
+  SHELVING:
+    lightning_shelver   shelving time x0.5 per stack (max 2)  common
+    auto_sorter         inventory auto-sorted, -20% shelf time common
+    instant_reshelving  20% chance to shelve on pickup        rare    (min lvl 4)
+
+  CROWD CONTROL:
+    stern_glare         children 25% slower in 120px radius   common
+    shushing_aura       pulse every 10s, freeze nearby 2s     rare    (min lvl 3)
+    story_time          active: gather children 5s, 45s CD    rare    (min lvl 4)
+    parent_phone_call   active: remove 1 child, 60s CD        rare    (min lvl 6)
+
+  AUTOMATION:
+    assistant_librarian NPC collects books on patrol (cap: 1) rare    (min lvl 5)
+    volunteer_student   follows player, collects books (cap:1) common (min lvl 3)
+    library_cat         reduces boldness in 150px radius      rare    (min lvl 4)
+    return_robot        auto-shelves within 100px (cap: 2)    rare    (min lvl 6)
+
+  AUTOMATION CAP RULE:
+    Maximum 2 automation upgrades active simultaneously.
+    If player already has 2, automation upgrades are removed from pool.
+    This prevents automation trivializing the game.
+
+  UPGRADE PICKER LOGIC:
+    1. Filter pool: remove upgrades below min_level, remove maxed stacks
+    2. Apply automation cap filter if needed
+    3. Weight by rarity: common = weight 3, rare = weight 1
+    4. Sample 3 unique upgrades from weighted pool
+    5. If pool has fewer than 3, fill with "nothing" cards or re-offer maxed
+
+================================================================================
+  SECTION 12 — EVENT & BOSS TIMELINE (FULL 30-MINUTE RUN)
+================================================================================
+
+  TIME      TYPE         EVENT NAME               DURATION   NOTES
+  ──────────────────────────────────────────────────────────────────────
+  00:00     —            Game Start               —          2 children, 500 books
+  02:00     passive      Spawn rate increases     —          first ramp step
+  04:30     warn         —                        5s warn    "A school bus is arriving!"
+  05:00     BOSS         Kindergarten Field Trip  90s        large Curious Child wave
+  06:30     special      Story Hour               60s        more spawns, bonus XP
+  08:00     passive      New shelf sections open  —          book count ramp
+  09:30     warn         —                        5s warn    "Twin Tornadoes spotted!"
+  10:00     BOSS         Twin Tornadoes           120s       2x Book Fort Builders
+  11:00     special      Rainy Day                90s        +20% chaos generation
+  13:00     objective    Random mid-run goal      varies     first optional objective
+  14:30     warn         —                        5s warn    "Summer camp bus arriving!"
+  15:00     BOSS         Summer Camp Visit        120s       all child types, 2x chaos
+  16:30     special      Summer Reading Challenge 90s        rare books appear
+  18:00     passive      Boldness increases       —          flee radius now 65%
+  19:00     special      Book Fair                60s        shop opens
+  20:00     passive      New shelf sections open  —          book count ramp
+  20:30     warn         —                        5s warn    "Something big is coming..."
+  21:00     BOSS         Twin Tornadoes II        120s       elite versions
+  23:00     special      School Field Trip        90s        Speed Reader + Curious wave
+  25:00     BOSS         Story Hour Surge         90s        Teen Influencers + wave
+  26:00     passive      Boldness max ramp        —          flee radius now 35%
+  27:00     objective    Final objective          varies     high-value objective
+  28:30     warn         —                        5s warn    "The troublemaker is here!"
+  29:00     BOSS         Ultimate Troublemaker    60s        1 of each elite child type
+  30:00     WIN          Closing Time             30s        chaos spike +15%, final wave
+  30:30     —            Win/Lose resolved        —          check chaos < 100%
+
+================================================================================
+  SECTION 13 — MID-RUN OBJECTIVES
+================================================================================
+
+  OBJECTIVE: find_missing_book
+    Display:  "Find the missing book! [timer]"
+    Trigger:  Specific book highlighted with pulsing outline
+    Complete: Return that specific book to its shelf
+    Time:     60 seconds
+    Reward:   150 XP, 400 score
+
+  OBJECTIVE: organize_childrens_section
+    Display:  "Clear the Children's Section! [X/Y books] [timer]"
+    Trigger:  ChildrensSection zone marked with overlay
+    Complete: All books removed from zone floor
+    Time:     90 seconds
+    Reward:   120 XP, 300 score, -5% chaos
+
+  OBJECTIVE: restock_new_arrivals
+    Display:  "Restock New Arrivals Shelf! [X/Y books] [timer]"
+    Trigger:  New arrivals shelf books scattered nearby
+    Complete: Return all to new arrivals shelf
+    Time:     75 seconds
+    Reward:   100 XP, 250 score
+
+  OBJECTIVE: clear_reading_area
+    Display:  "Clear the Reading Area! [X/Y books] [timer]"
+    Trigger:  ReadingTables zone marked
+    Complete: Zero books on reading table zone floor
+    Time:     60 seconds
+    Reward:   80 XP, 200 score, -3% chaos, 30s score multiplier x2
+
+  OBJECTIVE: recover_rare_edition
+    Display:  "Recover the Rare Edition! Find the child carrying it."
+    Trigger:  One child has rare book highlighted above them
+    Complete: Intercept that specific child
+    Time:     no time limit (but child continues moving)
+    Reward:   200 XP, 500 score
+
+  OBJECTIVE SYSTEM RULES:
+    - Maximum 2 active objectives simultaneously
+    - New objective offered 30 seconds after previous one completed or expired
+    - Objectives are optional — ignoring them has no penalty
+    - Objectives never conflict with boss events (paused during boss events)
+
+================================================================================
+  SECTION 14 — UI / UX LAYOUT SPECIFICATION
+================================================================================
+
+  ─────────────────────────────────────────────────────────────
+  MAIN MENU (1920x1080 reference)
+  ─────────────────────────────────────────────────────────────
+  Background: library illustration (blurred) or animated scene
+
+  Center:
+    [Library Survivors] — title text, large, themed font
+    [Subtitle: "Survive until Closing Time"]
+
+  Center-bottom (vertical stack, centered):
+    [START RUN]       — primary button
+    [SETTINGS]        — secondary button
+    [QUIT]            — tertiary button
+
+  Bottom-right:
+    Version number
+
+  ─────────────────────────────────────────────────────────────
+  IN-GAME HUD
+  ─────────────────────────────────────────────────────────────
+  TOP CENTER:
+    Chaos meter bar (full width, prominent)
+    - Background: dark gray
+    - Fill: green→yellow→orange→red based on %
+    - Label: "CHAOS  47%" centered on bar
+    - At 90%+: bar pulses with alpha animation
+
+  TOP LEFT:
+    Run timer "14:32" — large, clear font
+
+  TOP RIGHT:
+    XP bar (smaller than chaos bar)
+    Level indicator "LVL 4"
+
+  BOTTOM CENTER:
+    Inventory belt — row of 5 (to MAX_INVENTORY) book slot icons
+    - Empty slot: faded outline
+    - Filled slot: colored book icon matching genre
+
+  BOTTOM LEFT:
+    Objective tracker (up to 2 entries)
+    Format: "[icon] Clear the Children's Section! 3/8 [0:42]"
+
+  TOP CENTER (below chaos bar, temporary):
+    EventBanner — slides in for 3 seconds on event trigger
+    Background: themed color per event type
+    Text: e.g. "SCHOOL FIELD TRIP INCOMING!"
+
+  ─────────────────────────────────────────────────────────────
+  UPGRADE PICKER (modal overlay, pauses game)
+  ─────────────────────────────────────────────────────────────
+  Dimmed background overlay (alpha 0.7)
+  Center panel:
+    Title: "LEVEL UP! Choose an upgrade"
+    Subtitle: "Level 4 → Level 5"
+    3 upgrade cards side by side (or stacked on narrow screens)
+
+  Each card (approx 280x360px):
+    - Category badge (top, color-coded per category)
+    - Icon (center, large)
+    - Upgrade Name (large text)
+    - Short description (2–3 lines)
+    - Stack indicator if stackable: "Stack 1 of 3"
+    - [SELECT] button at bottom
+
+  ─────────────────────────────────────────────────────────────
+  RUN SUMMARY SCREEN
+  ─────────────────────────────────────────────────────────────
+  Background: same as main menu
+
+  Header:
+    WIN:  "The Library Closes In Perfect Order." — gold text
+    LOSE: "The Library Has Fallen Into Complete Disorder." — red text
+
+  Stats panel (centered):
+    Survival Time:         14:32
+    Books Shelved:         247
+    Children Intercepted:  34
+    Peak Chaos Reached:    87%
+    Total XP Earned:       3,420
+    Final Score:           28,450
+
+  Upgrades taken: row of upgrade icons
+
+  Buttons:
+    [PLAY AGAIN]    [MAIN MENU]
+
+  ─────────────────────────────────────────────────────────────
+  SETTINGS SCREEN
+  ─────────────────────────────────────────────────────────────
+  - Master Volume (slider)
+  - Music Volume (slider)
+  - SFX Volume (slider)
+  - Screen Shake (toggle)
+  - Reduced Motion (toggle) — disables particles + screen shake
+  - Colorblind Mode (dropdown: Off / Deuteranopia / Protanopia)
+  - Text Size (Small / Medium / Large)
+  - Fullscreen (toggle)
+  - [BACK]
+
+================================================================================
+  SECTION 15 — MAP LAYOUT SPECIFICATION
+================================================================================
+
+  MAP SIZE:     2400 x 1800 pixels (60 x 45 tiles at 40px per tile)
+  TILE SIZE:    40 x 40 pixels
+
+  ZONES (approximate positions):
+  ─────────────────────────────────────────────────────────────
+
+  OUTER WALLS:  full perimeter, 1 tile thick, non-walkable
+
+  MAIN FLOOR (walkable area): 58 x 43 tiles interior
+
+  SHELVING ROWS (non-walkable shelf tiles, 1 tile wide):
+    Row A: x=80–480,   y=160    (genre: fiction)
+    Row B: x=80–480,   y=280    (genre: science)
+    Row C: x=80–480,   y=400    (genre: history)
+    Row D: x=960–1360, y=160    (genre: biography)
+    Row E: x=960–1360, y=280    (genre: mystery)
+    Row F: x=960–1360, y=400    (genre: reference)
+    Row G: x=1840–2240,y=160    (genre: children)
+    Row H: x=1840–2240,y=280    (genre: science)
+    Row I (new arrivals): x=1840–2240, y=400
+
+  SPECIAL ZONES (walkable, tagged areas):
+    Reading Tables:   x=600–900,  y=800–1200   (chairs + tables visual)
+    Study Area:       x=1100–1400,y=800–1200
+    Children's Section: x=1600–2100, y=1000–1600  (smaller furniture)
+    New Arrivals Shelf: row I above
+
+  SPAWN POINTS (8 points at map edges):
+    Top edge:    (600,50),  (1200,50),  (1800,50)
+    Bottom edge: (600,1750),(1200,1750),(1800,1750)
+    Left edge:   (50,600),  (50,1200)
+    Right edge:  (2350,600),(2350,1200)
+
+  SHORTCUT DOORS (unlocked by Staff Passages upgrade):
+    Door A: x=480, y=700  (connects fiction row to reading tables)
+    Door B: x=1360,y=700  (connects biography row to study area)
+
+  CAMERA:
+    Follows librarian with soft lerp (weight 0.08)
+    Clamped to map bounds
+    Zoom: 1.0x default (shows approx 1280x720 of map)
+    Consider zoom-out option in settings
+
+================================================================================
+  SECTION 16 — ASSET LIST
+================================================================================
+
+  All art exported as PNG. All audio exported as OGG Vorbis.
+  Placeholder assets (colored rectangles/beeps) are acceptable for Phase 1–3.
+
+  ── SPRITES ─────────────────────────────────────────────────
+
+  LIBRARIAN:
+    librarian_idle.png              (4 frames, each direction or use 1)
+    librarian_walk.png              (8 frames x 8 directions = 64 frames)
+    librarian_shelve.png            (4 frames, forward-facing)
+    librarian_pickup.png            (3 frames)
+
+  CHILDREN (per type, 6 types):
+    [type]_walk.png                 (6 frames x 4 directions)
+    [type]_flee.png                 (6 frames x 4 directions)
+    [type]_carry.png                (6 frames — book visible in hands)
+    [type]_intercept.png            (3 frames — startled reaction)
+  Total child sprites: 6 types x 4 sprite sheets = 24 sheets
+
+  BOOKS:
+    book_fiction.png                (small icon, purple cover)
+    book_science.png                (green cover)
+    book_history.png                (brown cover)
+    book_children.png               (yellow cover)
+    book_reference.png              (blue cover)
+    book_biography.png              (red cover)
+    book_mystery.png                (dark blue cover)
+    book_rare.png                   (gold cover, animated glow)
+
+  ENVIRONMENT:
+    shelf_full.png                  (bookshelf with books)
+    shelf_partial.png               (half-empty shelf)
+    shelf_empty.png                 (empty shelf)
+    floor_clean.png                 (tile variants x4)
+    floor_littered.png              (tile with books scattered, decorative)
+    reading_table.png
+    study_chair.png
+    wall_tile.png
+    shortcut_door_locked.png
+    shortcut_door_open.png
+    library_cat.png                 (idle + walk animations)
+
+  UI:
+    chaos_bar_bg.png
+    chaos_bar_fill.png              (9-slice for stretching)
+    inventory_slot_empty.png
+    inventory_slot_filled.png
+    upgrade_card_bg.png
+    category_badge_mobility.png
+    category_badge_collection.png
+    category_badge_shelving.png
+    category_badge_crowd_control.png
+    category_badge_automation.png
+    upgrade icons (1 per upgrade = 16 icons)
+    event_banner_bg.png
+
+  ── AUDIO: SOUND EFFECTS ─────────────────────────────────────
+
+  sfx_book_pickup.ogg              (satisfying soft thud/whoosh)
+  sfx_book_shelved.ogg             (crisp click + gentle chime)
+  sfx_book_dropped.ogg             (soft thump)
+  sfx_child_intercept.ogg          (surprised gasp + book impact)
+  sfx_chaos_spike.ogg              (rising noise burst)
+  sfx_level_up.ogg                 (gentle library bell)
+  sfx_upgrade_select.ogg           (card flip click)
+  sfx_event_warning.ogg            (PA system crackle)
+  sfx_boss_incoming.ogg            (louder alarm)
+  sfx_game_over.ogg                (noise crescendo)
+  sfx_win.ogg                      (triumphant gentle chime)
+  sfx_story_time.ogg               (gathering chime)
+  sfx_shush.ogg                    (librarian shush)
+  sfx_parent_call.ogg              (phone dial tone)
+  sfx_shortcut_door.ogg            (door whoosh)
+  sfx_rare_book_spawn.ogg          (magical twinkle)
+  sfx_cluster_warning.ogg          (low rumble, plays near large piles)
+
+  ── AUDIO: MUSIC ─────────────────────────────────────────────
+
+  music_early_game.ogg             (calm library jazz or lo-fi, ~120bpm)
+  music_mid_game.ogg               (same theme, faster tempo, ~140bpm)
+  music_late_game.ogg              (urgent, chaotic undercurrent, ~160bpm)
+  music_boss_overlay.ogg           (intense layer, mixes over current track)
+  music_closing_time.ogg           (triumphant resolution sting, 30s)
+  music_main_menu.ogg              (relaxed, welcoming)
+  music_game_over.ogg              (brief somber sting)
+
+  AUDIO IMPLEMENTATION NOTE:
+    Music system uses layers. Early/mid/late tracks cross-fade.
+    Chaos meter drives ambient chatter volume (0% = silent, 100% = peak).
+    Boss overlay plays on top of current track during boss events.
+
+================================================================================
+  SECTION 17 — AUDIO DESIGN NOTES
+================================================================================
+
+  DYNAMIC AUDIO SYSTEM:
+    AudioManager maintains 3 audio bus channels:
+      - Music bus (cross-fades between tracks)
+      - Ambience bus (library chatter, driven by chaos %)
+      - SFX bus (one-shot effects)
+
+  MUSIC TRANSITION LOGIC:
+    if run_time < 600:    play music_early_game
+    elif run_time < 1200: cross_fade to music_mid_game (over 5 seconds)
+    elif run_time < 1800: cross_fade to music_late_game (over 5 seconds)
+    During boss event: add music_boss_overlay layer
+    On win: play music_closing_time (stops all other music)
+    On lose: play music_game_over (stops all other music)
+
+  AMBIENCE SYSTEM:
+    ambient_volume = lerp(-40db, 0db, chaos_percent / 100.0)
+    AudioManager updates this every 0.5 seconds
+
+  SFX POOLING:
+    Pool 8 AudioStreamPlayer nodes for SFX to prevent audio dropout
+    when many books are picked up/shelved simultaneously.
+
+================================================================================
+  SECTION 18 — PHASED DEVELOPMENT PLAN (WEEK-BY-WEEK TASKS)
+================================================================================
+
+  ════════════════════════════════════════════════════════════
+  PHASE 1 — CORE PROTOTYPE  (Weeks 1–3)
+  Goal: Playable core loop on day one
+  ════════════════════════════════════════════════════════════
+
+  WEEK 1 — Scene foundation
+  [ ] Create Godot project, folder structure per Section 3
+  [ ] Register all Autoloads per Section 5
+  [ ] Build Library.tscn with TileMap (placeholder tiles)
+  [ ] Add NavigationRegion2D, bake navmesh
+  [ ] Build Librarian.tscn per Section 4 scene tree
+  [ ] Implement 8-directional movement (CharacterBody2D.move_and_slide)
+  [ ] Add camera follow with lerp and bounds clamping
+  [ ] Add placeholder Bookshelf.tscn with genre property
+  [ ] Define all constants in GameConstants.gd (Section 7)
+
+  WEEK 2 — Books, pickup, and shelving
+  [ ] Implement Book.tscn with state machine (SHELVED/ON_FLOOR/CARRIED)
+  [ ] Implement object pool for Book nodes (CRITICAL — do not skip)
+  [ ] Implement PickupRadius Area2D on Librarian
+  [ ] Implement auto-pickup: book enters radius → added to Inventory
+  [ ] Implement Inventory.gd (array, cap = STARTING_INVENTORY, signals)
+  [ ] Implement Bookshelf ReturnZone Area2D
+  [ ] Implement auto-shelving: librarian enters ReturnZone → matching
+      books removed from inventory, XP awarded, chaos reduced
+  [ ] Wire ChaosManager.reduce_chaos on shelving
+  [ ] Wire GameManager.add_score on shelving
+
+  WEEK 3 — First child AI and Chaos Meter
+  [ ] Implement BaseChild.gd state machine (Section 9)
+  [ ] Implement CuriousChild.gd (no overrides, pure base behavior)
+  [ ] Implement ChildSpawner: spawn at edge Marker2D nodes
+  [ ] Implement ChaosManager (floor_book_count tracking, rate calc)
+  [ ] Implement cluster detection (every 0.5s, cached)
+  [ ] Build HUD.tscn per Section 14 (placeholder art)
+  [ ] Connect ChaosManager.chaos_changed to HUD chaos bar
+  [ ] Implement GameManager run timer (count up to 1800s)
+  [ ] Implement game over: chaos_maxed signal → GameOver.tscn
+  [ ] Implement child interception (librarian body_entered child)
+  [ ] Stub win condition at 30:00 (just show win screen for now)
+
+  MILESTONE 1 CHECKPOINT:
+    Play a run. Books land on floor. Chaos rises. Librarian collects
+    and shelves books. Child runs away when approached. Game ends at
+    Chaos 100%. Run lasts at least 3 minutes.
+
+  ════════════════════════════════════════════════════════════
+  PHASE 2 — PROGRESSION & CHAOS SYSTEMS  (Weeks 4–6)
+  Goal: Full 30-minute arc possible
+  ════════════════════════════════════════════════════════════
+
+  WEEK 4 — XP and levelling
+  [ ] Implement XP sources (shelving, intercept) in Librarian.gd
+  [ ] Implement XP curve from GameConstants.XP_CURVE array
+  [ ] Implement level-up pause (get_tree().paused = true)
+  [ ] Build UpgradePicker.tscn and UpgradeCard.tscn per Section 14
+  [ ] Build UpgradeManager with upgrade_pool from upgrades.json
+  [ ] Implement get_random_upgrades() with rarity weighting
+  [ ] Implement upgrade selection → apply_upgrade() → resume game
+
+  WEEK 5 — First upgrades (v1)
+  [ ] Implement upgrades.json with all upgrades from Section 11
+  [ ] Implement stat_modifier upgrades (speed, radius, shelving time)
+  [ ] Implement comfortable_shoes (move speed multiplier)
+  [ ] Implement magnetic_bookmark (pickup radius multiplier)
+  [ ] Implement lightning_shelver (shelving time reduction)
+  [ ] Implement stern_glare (child slow aura on librarian)
+  [ ] Implement volunteer_student (follower NPC, Section 11)
+  [ ] Test upgrade stacking (comfortable_shoes x3 should stack correctly)
+
+  WEEK 6 — Difficulty scaling and win/lose arc
+  [ ] Implement DifficultyScaler.gd
+  [ ] Implement active book count ramp (unlock shelves on timer)
+  [ ] Implement child spawn rate lerp over 30 minutes
+  [ ] Implement child speed scaling over time
+  [ ] Implement boldness multiplier ramp (flee radius shrinks)
+  [ ] Implement Closing Time sequence (chaos spike + final wave)
+  [ ] Implement win condition check after Closing Time
+  [ ] Build WinScreen.tscn and RunSummary.tscn per Section 14
+  [ ] Wire GameManager stats to RunSummary display
+
+  MILESTONE 2 CHECKPOINT:
+    A 30-minute run is possible. Game noticeably harder at minute 20
+    vs minute 5. Levelling up and picking upgrades feels rewarding.
+    Win and lose both have proper end screens.
+
+  ════════════════════════════════════════════════════════════
+  PHASE 3 — CHILD AI VARIETY & HERDING  (Weeks 7–9)
+  Goal: All 6 child types, emergent crowd control
+  ════════════════════════════════════════════════════════════
+
+  WEEK 7 — Child types batch 1
+  [ ] Refactor BaseChild.gd to expose clean override hooks
+  [ ] Load child stats from child_types.json
+  [ ] Implement SpeedReader.gd (override: fast, far carry destination)
+  [ ] Implement BookFortBuilder.gd (override: multi-book local drop)
+  [ ] Implement HideAndSeekKid.gd (override: zigzag path, random dest)
+  [ ] Add child type weighting to ChildSpawner per spawn_weight fields
+
+  WEEK 8 — Child types batch 2 + herding
+  [ ] Implement SugarRushKid.gd (override: extreme speed, fast idle)
+  [ ] Implement TeenInfluencer.gd (override: chaos zone aura Area2D)
+  [ ] Polish flee vector calculation in BaseChild
+  [ ] Verify herding emerges naturally from flee behavior
+  [ ] Add visual feedback for flee radius (optional ring, can be toggled)
+  [ ] Implement interception XP bonus per child type (xp_intercept_bonus)
+
+  WEEK 9 — Boldness ramp and intercept polish
+  [ ] Implement boldness multiplier driven by DifficultyScaler
+  [ ] Verify late-game children barely flee (boldness near 1.0)
+  [ ] Polish intercept visual (book pop animation, star burst)
+  [ ] Add intercept SFX
+  [ ] Playtest: does risk/reward tension (clean vs. chase) exist?
+
+  MILESTONE 3 CHECKPOINT:
+    All 6 child types in game. First-time players discover herding
+    without being told. Intercepting a child feels satisfying.
+
+  ════════════════════════════════════════════════════════════
+  PHASE 4 — EVENTS, OBJECTIVES & FULL UPGRADES  (Weeks 10–13)
+  Goal: Feature-complete run
+  ════════════════════════════════════════════════════════════
+
+  WEEK 10 — Special events
+  [ ] Build EventManager.gd with timeline from events.json
+  [ ] Implement EventBanner HUD element (slides in/out)
+  [ ] Implement 5-second pre-event warning display
+  [ ] Implement Story Hour (spawn rate boost + XP bonus)
+  [ ] Implement School Field Trip (single large wave)
+  [ ] Implement Rainy Day (chaos multiplier for duration)
+  [ ] Implement Summer Reading Challenge (rare book spawns)
+  [ ] Implement Book Fair (score-based shop UI)
+
+  WEEK 11 — Boss events
+  [ ] Implement boss event framework (boss flag, stronger warning)
+  [ ] Implement Kindergarten Field Trip (large Curious wave, 90s)
+  [ ] Implement Twin Tornadoes (2x BookFortBuilder, opposite sides)
+  [ ] Implement Summer Camp Visit (all types, 2x chaos, 120s)
+  [ ] Implement Ultimate Troublemaker (elite versions of all types)
+  [ ] Wire boss events into EventManager timeline per Section 12
+
+  WEEK 12 — Mid-run objectives
+  [ ] Build ObjectiveSystem.gd
+  [ ] Build ObjectiveTracker HUD element
+  [ ] Implement find_missing_book objective
+  [ ] Implement organize_childrens_section objective
+  [ ] Implement restock_new_arrivals objective
+  [ ] Implement clear_reading_area objective
+  [ ] Implement recover_rare_edition objective
+  [ ] Test objective rotation logic (max 2 active, refresh on complete)
+
+  WEEK 13 — Full upgrade tree and balance pass
+  [ ] Implement all remaining upgrades (Section 11)
+  [ ] Implement active abilities (Story Time, Parent Phone Call)
+  [ ] Implement automation units (Section 11)
+  [ ] Enforce automation cap (max 2 automation upgrades)
+  [ ] Implement staff_passages (unlock shortcut doors on map)
+  [ ] First balance pass — run 5 test runs, note dominant strategies
+
+  MILESTONE 4 CHECKPOINT:
+    Feature-complete. Boss events feel climactic. Objectives add
+    meaningful variety. Multiple upgrade builds feel viable.
+
+  ════════════════════════════════════════════════════════════
+  PHASE 5 — POLISH, FEEL & AUDIO  (Weeks 14–16)
+  Goal: The game looks and sounds finished
+  ════════════════════════════════════════════════════════════
+
+  WEEK 14 — Art and animation
+  [ ] Replace all placeholder sprites with final art (asset list Section 16)
+  [ ] Implement AnimationPlayer on Librarian (walk, idle, shelve, pickup)
+  [ ] Implement AnimationPlayer on all 6 child types
+  [ ] Implement bookshelf state sprites (full/partial/empty)
+  [ ] Implement book genre sprites (genre-colored icons)
+  [ ] Implement rare book glow animation
+  [ ] Final library tileset (floor tiles, wall tiles, furniture)
+  [ ] Implement upgrade card icons (16 icons)
+  [ ] Art pass on all UI elements (chaos bar, inventory belt, XP bar)
+
+  WEEK 15 — Audio
+  [ ] Implement AudioManager.gd with 3-bus system (Section 17)
+  [ ] Import and wire all SFX (Section 16 asset list)
+  [ ] Implement SFX pooling (8 AudioStreamPlayer nodes)
+  [ ] Import and wire music tracks
+  [ ] Implement dynamic music transitions (time-based cross-fade)
+  [ ] Implement ambience bus driven by chaos %
+  [ ] Implement boss event music overlay layer
+  [ ] Audio mixing pass (relative volumes, nothing too loud/quiet)
+
+  WEEK 16 — Game feel and accessibility
+  [ ] Screen shake on chaos milestones (50%, 75%, 90%)
+  [ ] Chaos bar pulse animation above 70%
+  [ ] HUD color shift as chaos rises (green→yellow→orange→red)
+  [ ] Particle: book pickup sparkle burst
+  [ ] Particle: book shelved puff
+  [ ] Particle: intercept star burst
+  [ ] Particle: cluster chaos haze (large piles)
+  [ ] Implement Settings screen (Section 14)
+  [ ] Implement Reduced Motion toggle (disables shake + particles)
+  [ ] Implement Colorblind Mode (alternative color palette)
+  [ ] Implement Text Size option
+
+  MILESTONE 5 CHECKPOINT:
+    Show the game to someone unfamiliar with it. They should immediately
+    understand tone and genre within 30 seconds. Every action has
+    audio and visual feedback.
+
+  ════════════════════════════════════════════════════════════
+  PHASE 6 — QA, BALANCE & LAUNCH  (Weeks 17–20)
+  ════════════════════════════════════════════════════════════
+
+  WEEK 17 — Alpha playtest
+  [ ] Run 5+ playtest sessions (diverse skill levels)
+  [ ] Each session: 2 runs minimum, record with OBS
+  [ ] Post-session survey (Google Forms):
+        - Where did you feel in control? When did you start losing it?
+        - Did you ever herd children intentionally?
+        - Did you ever intercept children intentionally?
+        - Which upgrades did you take? Did any feel useless?
+        - What felt unfair vs. satisfying?
+  [ ] Collect metrics per Section 18 Risk Log metrics list
+
+  WEEK 18 — Balance pass
+  [ ] Adjust chaos rate if average death before minute 15 (reduce ramp)
+  [ ] Adjust chaos rate if most players reach minute 28 (increase mid)
+  [ ] Tune XP curve (should level every 2–3 min early, 5–6 min late)
+  [ ] Remove or rework always-picked / never-picked upgrades
+  [ ] Tune child type spawn weights based on playtest feedback
+  [ ] Calibrate boss events (each harder than previous by ~20%)
+  [ ] Validate automation upgrades don't trivialize game
+  [ ] All values changed via GameConstants.gd / JSON files only
+
+  WEEK 19 — Bug fix and build preparation
+  [ ] Full regression pass across all systems
+  [ ] Test edge cases:
+        - Max inventory + all books in range simultaneously
+        - 80 children on map (MAX_CHILDREN_ON_MAP)
+        - All automation units active simultaneously
+        - Chaos at 99% when Closing Time triggers
+        - Upgrade interaction edge cases (e.g. Dewey Vacuum + Book Lasso)
+  [ ] Performance test at minute 30 (5,000 books, target 60fps)
+  [ ] Implement culling/LOD for off-screen books if needed
+  [ ] High score persistence (JSON file)
+  [ ] Settings persistence (ConfigFile)
+  [ ] Steam Deck / controller-only playthrough (all UI navigable)
+  [ ] Resolution testing: 1080p, 1440p, 4K
+
+  WEEK 20 — Launch preparation
+  [ ] Build store page assets (capsule art, screenshots, trailer)
+  [ ] Record and cut trailer:
+        - Hook: chaos bar rising
+        - Gameplay: shelving, herding, intercept
+        - Boss event moment
+        - Closing Time win
+  [ ] Final release build (version 1.0.0)
+  [ ] Enable crash reporting
+  [ ] Document day-1 patch plan
+  [ ] Set up Discord or forum for post-launch feedback
+
+================================================================================
+  SECTION 19 — RISK LOG
+================================================================================
+
+  RISK: Chaos curve balance [HIGH]
+    The 500→5,000 book ramp is a design target, not a validated number.
+    All chaos values MUST be in GameConstants.gd or JSON — never hardcode.
+    Mitigation: expose every rate/ramp value as a data constant from day 1.
+
+  RISK: Herding discoverability [HIGH]
+    Players may not intuitively understand the flee radius mechanic.
+    Mitigation: First run shows a brief animated hint (skippable).
+    "Children are afraid of librarians — use it to your advantage."
+    Validate in alpha playtest: can players explain herding after 1 run?
+
+  RISK: Performance at minute 30 [HIGH]
+    5,000+ active Book nodes is a large scene object count.
+    Mitigation: object pool MUST be built in Phase 1. Retrofitting is painful.
+    Target: 60fps with 5,000 books and 80 children on screen.
+    Fallback: cull books more than 3 screens from player if needed.
+
+  RISK: Automation upgrade power creep [MEDIUM]
+    Return Robot + Assistant Librarian + Volunteer Student stacked may
+    trivialize the shelving loop entirely.
+    Mitigation: automation cap (max 2 automation upgrades per run).
+    Also tune automation unit inventory caps conservatively.
+
+  RISK: Child navigation at scale [MEDIUM]
+    80 children all running NavigationAgent2D simultaneously may cause
+    navigation server load spikes.
+    Mitigation: stagger navigation updates (not all agents update same frame).
+    Use NavigationAgent2D.set_navigation_layer_value for performance tuning.
+
+  RISK: Boss event difficulty calibration [LOW]
+    Boss events may feel too easy early or unfair late.
+    Mitigation: all boss event durations and effects in events.json.
+    Tune with playtest data in week 18. Target: each boss ~20% harder than
+    the previous one.
+
+================================================================================
+  END OF DOCUMENT
+  Library Survivors — Complete AI Agent Development Specification v1.0
+================================================================================

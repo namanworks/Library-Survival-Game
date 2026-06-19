@@ -1,0 +1,146 @@
+[gd_scene load_steps=2 format=3 uid="uid://settings_menu_001"]
+
+[ext_resource type="Script" path="res://scripts/ui/SettingsMenu.gd" id="1_settings"]
+
+[node name="SettingsMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_settings")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.9)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Title" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "Settings"
+horizontal_alignment = 1
+
+[node name="AudioLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 24
+text = "Audio"
+horizontal_alignment = 1
+
+[node name="GridContainer" type="GridContainer" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/h_separation = 30
+theme_override_constants/v_separation = 15
+columns = 2
+
+[node name="MasterLabel" type="Label" parent="CenterContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+text = "Master Volume"
+
+[node name="MasterSlider" type="HSlider" parent="CenterContainer/VBoxContainer/GridContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+max_value = 1.0
+step = 0.05
+
+[node name="MusicLabel" type="Label" parent="CenterContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+text = "Music Volume"
+
+[node name="MusicSlider" type="HSlider" parent="CenterContainer/VBoxContainer/GridContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+max_value = 1.0
+step = 0.05
+
+[node name="SFXLabel" type="Label" parent="CenterContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+text = "SFX Volume"
+
+[node name="SFXSlider" type="HSlider" parent="CenterContainer/VBoxContainer/GridContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+max_value = 1.0
+step = 0.05
+
+[node name="AccessibilityLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 24
+text = "Accessibility & Game Feel"
+horizontal_alignment = 1
+
+[node name="GridContainer2" type="GridContainer" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/h_separation = 30
+theme_override_constants/v_separation = 15
+columns = 2
+
+[node name="ScreenShakeLabel" type="Label" parent="CenterContainer/VBoxContainer/GridContainer2"]
+layout_mode = 2
+text = "Screen Shake"
+
+[node name="ScreenShakeCheck" type="CheckBox" parent="CenterContainer/VBoxContainer/GridContainer2"]
+layout_mode = 2
+
+[node name="ReducedMotionLabel" type="Label" parent="CenterContainer/VBoxContainer/GridContainer2"]
+layout_mode = 2
+text = "Reduced Motion"
+
+[node name="ReducedMotionCheck" type="CheckBox" parent="CenterContainer/VBoxContainer/GridContainer2"]
+layout_mode = 2
+
+[node name="ColorblindLabel" type="Label" parent="CenterContainer/VBoxContainer/GridContainer2"]
+layout_mode = 2
+text = "Colorblind Mode"
+
+[node name="ColorblindCheck" type="CheckBox" parent="CenterContainer/VBoxContainer/GridContainer2"]
+layout_mode = 2
+
+[node name="TextScaleLabel" type="Label" parent="CenterContainer/VBoxContainer/GridContainer2"]
+layout_mode = 2
+text = "Text Scale"
+
+[node name="TextScaleSlider" type="HSlider" parent="CenterContainer/VBoxContainer/GridContainer2"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+min_value = 0.8
+max_value = 1.5
+step = 0.1
+value = 1.0
+
+[node name="HSeparator" type="HSeparator" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="CloseButton" type="Button" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Close / Back"
+
+[connection signal="value_changed" from="CenterContainer/VBoxContainer/GridContainer/MasterSlider" to="." method="_on_master_slider_value_changed"]
+[connection signal="value_changed" from="CenterContainer/VBoxContainer/GridContainer/MusicSlider" to="." method="_on_music_slider_value_changed"]
+[connection signal="value_changed" from="CenterContainer/VBoxContainer/GridContainer/SFXSlider" to="." method="_on_sfx_slider_value_changed"]
+[connection signal="toggled" from="CenterContainer/VBoxContainer/GridContainer2/ScreenShakeCheck" to="." method="_on_screen_shake_check_toggled"]
+[connection signal="toggled" from="CenterContainer/VBoxContainer/GridContainer2/ReducedMotionCheck" to="." method="_on_reduced_motion_check_toggled"]
+[connection signal="toggled" from="CenterContainer/VBoxContainer/GridContainer2/ColorblindCheck" to="." method="_on_colorblind_check_toggled"]
+[connection signal="value_changed" from="CenterContainer/VBoxContainer/GridContainer2/TextScaleSlider" to="." method="_on_text_scale_slider_value_changed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/CloseButton" to="." method="_on_close_button_pressed"]

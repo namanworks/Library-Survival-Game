@@ -1,0 +1,596 @@
+================================================================================
+  LIBRARY SURVIVORS — DETAILED DEVELOPMENT ROADMAP
+  Based on Game Design Document v1.0
+================================================================================
+
+Total estimated duration: 18–20 weeks (solo or small team)
+Engine recommendation: Godot 4 or Unity 2D
+Target platform: PC (Steam), optional mobile port post-launch
+
+--------------------------------------------------------------------------------
+PHASE 1 — CORE PROTOTYPE
+Weeks 1–3 | Goal: Playable core loop from day one
+--------------------------------------------------------------------------------
+
+WEEK 1 — Scene foundation
+
+  [ ] Set up project repository and folder structure
+  [ ] Create top-down 2D scene with basic tilemap
+      - Floor grid tiles (library interior aesthetic)
+      - Bookshelf placement zones (static, non-walkable)
+      - Define collision layers: walls, shelves, floor
+  [ ] Build librarian player character
+      - 8-directional movement (gamepad + WASD/arrow keys)
+      - Placeholder sprite (rectangle is fine)
+      - Configurable base movement speed
+  [ ] Set up camera
+      - Follow player with soft lerp
+      - Clamp to scene bounds
+
+WEEK 2 — Books, shelves, and pickup
+
+  [ ] Create Book object
+      - States: SHELVED, CARRIED (by child), ON_FLOOR
+      - Visual indicator for floor state (visible glow or outline)
+      - Book type/genre property (used for correct-shelf matching)
+  [ ] Implement auto-pickup radius on librarian
+      - Configurable radius (exported variable)
+      - Books within radius auto-added to inventory
+      - Play pickup feedback (flash or pop animation placeholder)
+  [ ] Build inventory system
+      - Starting capacity: 5 books
+      - Inventory displayed as belt/slots in HUD
+      - Overflow prevention (stop pickup when full)
+  [ ] Implement bookshelf return mechanic
+      - Shelves tagged by book genre
+      - On librarian approach: matching books auto-shelved
+      - Award XP on each book returned
+      - Award score points on each book returned
+
+WEEK 3 — First child AI and Chaos Meter
+
+  [ ] Build Curious Child (basic child archetype)
+      - Spawn at map edges or designated spawn points
+      - Pathfind to nearest active bookshelf (A* or NavMesh)
+      - On reach: remove one book (local drop or carry)
+      - Flee behavior: detect librarian within awareness radius,
+        run in opposite direction, avoid librarian path
+  [ ] Implement Chaos Meter (MVP)
+      - Track total books on floor (raw count)
+      - Cluster detection: groups of 5+ nearby books apply
+        additional chaos generation multiplier
+      - Chaos rises continuously based on floor book count
+      - Chaos meter UI bar (0–100%)
+      - Game over trigger at 100%
+  [ ] Build basic HUD skeleton
+      - Chaos bar (top of screen, prominent color warning states)
+      - Inventory belt (bottom of screen)
+      - Run timer (counts up to 30:00)
+      - XP bar with current level display
+  [ ] Wire up game over state
+      - Freeze game on Chaos = 100%
+      - Show "The Library Has Fallen Into Complete Disorder" screen
+      - Restart button
+
+  PHASE 1 MILESTONE: A librarian can move, pick up books, return them,
+  watch chaos rise from child activity, and lose the game. Fun to play
+  for at least 3–5 minutes.
+
+--------------------------------------------------------------------------------
+PHASE 2 — PROGRESSION & CHAOS SYSTEMS
+Weeks 4–6 | Goal: XP loop, upgrades, 30-minute difficulty arc
+--------------------------------------------------------------------------------
+
+WEEK 4 — XP and level-up system
+
+  [ ] Implement XP sources
+      - Shelving a book: base XP award
+      - Intercepting a child carrying a book: bonus XP award
+      - Completing an objective: large XP award (stub for now)
+      - Surviving special events: XP award (stub for now)
+  [ ] Build XP curve
+      - Level 1→2:   100 XP
+      - Level 2→3:   150 XP
+      - Level 3→4:   225 XP
+      - Level 4→5:   340 XP
+      - Level 5→6:   510 XP
+      - Level 6→7:   765 XP
+      - Continue curve with ~1.5x multiplier per level
+  [ ] Level-up pause and upgrade picker
+      - Pause game on level-up
+      - Present 3 random upgrade cards from available pool
+      - Player selects one; game resumes
+      - Upgrade card UI (icon, name, description)
+
+WEEK 5 — First upgrade pool (v1)
+
+  Implement 2–3 upgrades per category for initial pool:
+
+  [ ] MOBILITY
+      - Comfortable Shoes: +10% movement speed (stackable, up to 3x)
+      - Library Scooter: major speed boost, unlock at level 4+
+      - Secret Staff Passages: unlock shortcut doors on map
+
+  [ ] COLLECTION
+      - Magnetic Bookmark: increase pickup radius by 50%
+      - Dewey Vacuum: books slowly attracted toward player
+      - Book Lasso: periodic pull of distant floor books
+
+  [ ] SHELVING
+      - Lightning Shelver: reduce shelving animation time by 50%
+      - Auto Sorter: inventory pre-sorted, reducing shelving time further
+      - Instant Re-Shelving: 20% chance to shelve on pickup (no trip needed)
+
+  [ ] Upgrade rarity weighting
+      - Common upgrades: appear frequently early game
+      - Rare upgrades: weighted to appear mid/late game
+      - Duplicate handling: already-maxed upgrades removed from pool
+
+WEEK 6 — Difficulty scaling and win/lose arc
+
+  [ ] Active book count ramp (key scaling mechanic)
+      - Minute  1:  500 books active (available to be removed)
+      - Minute 10: 1,500 books active
+      - Minute 20: 3,000 books active
+      - Minute 30: 5,000+ books active
+      - Implement as progressive shelf unlock over time
+      - New shelf sections become "active" on a timer curve
+  [ ] Child population ramp
+      - Child spawn rate increases every 2 minutes
+      - Child movement speed scales with time (cap at 2x base)
+      - Child book-removal frequency increases over time
+  [ ] Win condition and Closing Time sequence
+      - At 30:00: trigger Closing Time
+      - Chaos wave: brief spike in chaos generation
+      - If Chaos stays below 100%: win screen
+        "The Library Closes In Perfect Order."
+      - Score summary displayed
+  [ ] Run summary screen
+      - Books shelved (total count)
+      - Children intercepted
+      - Peak chaos percentage reached
+      - Total XP earned
+      - Survival time
+      - Restart / Main Menu buttons
+
+  PHASE 2 MILESTONE: A full 30-minute run is possible. The game gets
+  harder over time in a measurable way. Levelling up feels rewarding.
+
+--------------------------------------------------------------------------------
+PHASE 3 — CHILD AI VARIETY & HERDING
+Weeks 7–9 | Goal: All 6 child types, emergent crowd control
+--------------------------------------------------------------------------------
+
+WEEK 7 — Child type implementations (batch 1)
+
+  [ ] Refactor child base class for easy extension
+      - Properties: move_speed, boldness, removal_frequency,
+        carry_distance, flee_radius, chaos_contribution
+      - Virtual methods: on_reach_shelf(), on_flee(), on_carry_book()
+
+  [ ] Speed Reader
+      - 1.8x base movement speed
+      - Carries books to far destinations (reading tables, far corners)
+      - Creates long-distance logistics challenges
+      - Spawns from mid-game onward
+
+  [ ] Book Fort Builder
+      - Moves slowly to shelves
+      - Removes multiple books per visit (2–4)
+      - Drops books in tight cluster (pile within 1-tile radius)
+      - Pile of 20+ books generates extra chaos multiplier
+      - Priority target for players due to high local chaos
+
+  [ ] Hide And Seek Kid
+      - Moves in unpredictable zigzag path
+      - Drops books at random locations across the map
+      - Harder to predict and intercept
+      - Flee path is also unpredictable
+
+WEEK 8 — Child type implementations (batch 2) + herding
+
+  [ ] Sugar Rush Kid
+      - Extreme speed (2.5x base)
+      - Removes books rapidly (short dwell time at shelf)
+      - Creates chaos quickly but is difficult to herd effectively
+      - Brief window of opportunity to intercept
+
+  [ ] Teen Influencer
+      - Moves at normal speed
+      - Projects a temporary "chaos zone" aura (radius around them)
+      - Nearby child activity is amplified within the zone
+      - Aura visualized as a colored radius indicator
+      - Removing Teen Influencer cancels the aura
+
+  [ ] Herding mechanics
+      - Librarian awareness radius (visible indicator to player)
+      - Children detect librarian entry into their awareness radius
+      - Flee vector: away from librarian position
+      - Children path away, not through walls
+      - Players can exploit flee direction to:
+        * Push children away from shelves
+        * Funnel children into corners
+        * Corral groups into holding areas
+      - Herding does NOT remove chaos directly but prevents new chaos
+
+WEEK 9 — Child boldness ramp and intercept polish
+
+  [ ] Child boldness scaling over time
+      - Early game (0–10 min): large awareness radius, strong flee
+      - Mid game (10–20 min): reduced radius, slower flee speed
+      - Late game (20–30 min): some children briefly ignore librarian,
+        Elite children have minimal flee response
+  [ ] Book-carrying interception mechanic
+      - When librarian touches a child carrying a book:
+        * Child immediately drops book
+        * Librarian auto-collects it
+        * XP bonus awarded (larger than standard shelving XP)
+      - Visual feedback: book pops out of child sprite
+      - Sound cue: distinct from standard pickup
+  [ ] Risk/reward tension tuning
+      - Ensure intercepting children is always a meaningful choice
+        vs. cleaning existing floor books
+      - Adjust XP bonus until both strategies feel viable
+      - Playtest specifically for dominant strategy emergence
+
+  PHASE 3 MILESTONE: All 6 child types are in the game. Players
+  naturally discover herding without being told. Interception feels
+  satisfying and risky.
+
+--------------------------------------------------------------------------------
+PHASE 4 — EVENTS, OBJECTIVES & FULL UPGRADE TREE
+Weeks 10–13 | Goal: Boss waves, mid-run goals, all upgrade categories
+--------------------------------------------------------------------------------
+
+WEEK 10 — Special events
+
+  [ ] Event system architecture
+      - Event scheduler: trigger events on a timeline
+      - Event types: chaos spike, spawn wave, visual overlay, UI alert
+      - Pre-event warning: 5-second countdown notification
+
+  [ ] Story Hour
+      - Increased child spawn rate for 60 seconds
+      - Higher XP rewards for books shelved during event
+      - Calming music shift during event
+
+  [ ] School Field Trip
+      - Massive single wave of Curious Children + Speed Readers
+      - Short duration but high disruption
+      - Warning: "A school bus has pulled up outside!"
+
+  [ ] Rainy Day
+      - Gradual increase in visitor count over 90 seconds
+      - Ambient chaos generation increased by 20%
+      - Persists for remainder of that minute segment
+
+  [ ] Summer Reading Challenge
+      - Rare book objects appear (golden highlight)
+      - Returning rare books grants large XP + score bonus
+      - Rare books decay (disappear) if not collected in time
+
+  [ ] Book Fair
+      - Temporary shop overlay appears
+      - Player can spend score points on one-time power-ups
+      - Example items: Chaos Reduction (-10%), Speed Burst (30 sec)
+
+WEEK 11 — Boss events (every 5 minutes)
+
+  [ ] Boss event framework
+      - Boss events trigger at: 5, 10, 15, 20, 25, 30 minutes
+      - Extra warning UI (screen border flash, alarm sound)
+      - Boss events are harder than standard special events
+
+  [ ] Kindergarten Field Trip (minute 5)
+      - Large wave of slow Curious Children
+      - Introductory boss: manageable but sets expectations
+      - Duration: 90 seconds
+
+  [ ] Twin Tornadoes (minute 10)
+      - Two Book Fort Builders spawn simultaneously
+      - Each targets opposite ends of the map
+      - Forces player to split attention
+
+  [ ] Summer Camp Visit (minute 15)
+      - Massive population spike across all child types
+      - Longest duration boss event (2 minutes)
+      - Chaos generation rate doubled for duration
+
+  [ ] Ultimate Troublemaker (minute 29 / pre-Closing Time)
+      - Final boss event before win condition
+      - One elite child of each type spawns simultaneously
+      - Elite versions: higher speed, lower flee response, high boldness
+      - Surviving this unlocks Closing Time sequence
+
+WEEK 12 — Mid-run objectives
+
+  [ ] Objective system
+      - 1–2 optional objectives active at any time
+      - New objective generated after completing or ignoring one
+      - Objectives displayed in corner of HUD
+      - Bonus XP + score on completion
+
+  [ ] Find Missing Book
+      - Specific highlighted book spawns at random location
+      - Timer: must be returned within 60 seconds
+      - Reward: large XP bonus
+
+  [ ] Organize Children's Section
+      - A zone is marked on map
+      - Player must clear all floor books from zone within 90 seconds
+      - Reward: chaos reduction + XP
+
+  [ ] Restock New Arrivals Shelf
+      - New arrivals shelf depleted (books scattered nearby)
+      - Player must collect and return all within time limit
+      - Reward: XP + temporary chaos freeze on that shelf
+
+  [ ] Clear Reading Area
+      - Reading table zone marked
+      - Player must clear all books from tables within 60 seconds
+      - Reward: chaos reduction + score multiplier (30 sec)
+
+  [ ] Recover Rare Edition
+      - High-value book highlighted; child is carrying it
+      - Player must intercept that specific child
+      - Reward: large XP + score
+
+WEEK 13 — Crowd control and automation upgrades
+
+  [ ] CROWD CONTROL UPGRADES
+      - Stern Glare: children within large radius move 25% slower
+      - Shushing Aura: periodic suppression pulse, briefly freezes
+        nearby children in place (2 sec, 10 sec cooldown)
+      - Story Time: active ability — gather nearby children to one spot
+        for 5 seconds (they pause book removal during this)
+      - Parent Phone Call: active ability — removes one random
+        disruptive child from the map entirely
+
+  [ ] AUTOMATION UPGRADES
+      - Assistant Librarian: NPC follows a patrol route, auto-collects
+        floor books (limited inventory: 3 books)
+      - Volunteer Student: follows player, collects books in player wake
+        (inventory: 5 books, auto-returns when full)
+      - Library Cat: roams map, reduces child boldness in a large radius
+        (children flee faster near the cat)
+      - Return Robot: stationary unit at one shelf, auto-returns books
+        within a small radius continuously
+
+  [ ] Balance pass on full upgrade pool
+      - Ensure no upgrade is strictly dominant
+      - Ensure at least one upgrade per category feels "must-pick"
+      - Adjust cooldowns, radii, and bonus values based on early play
+
+  PHASE 4 MILESTONE: A full feature-complete run is possible.
+  Boss events feel climactic. Objectives add variety. Upgrades create
+  meaningfully different playstyle builds.
+
+--------------------------------------------------------------------------------
+PHASE 5 — POLISH, FEEL & AUDIO
+Weeks 14–16 | Goal: Art pass, sound, juice, accessibility
+--------------------------------------------------------------------------------
+
+WEEK 14 — Art and animation pass
+
+  [ ] Librarian sprite and animations
+      - Walk cycle (8 directions)
+      - Shelving animation (brief lean toward shelf)
+      - Pickup animation (brief reach down)
+      - Idle animation
+  [ ] Child sprites (one per type, color-coded)
+      - Walk cycles for all 6 child types
+      - Carrying-book state visual (book visible in hands)
+      - Flee animation (exaggerated run)
+      - Intercept reaction (book pops out, startled pose)
+  [ ] Environment art
+      - Bookshelf tiles (full, partial, empty states)
+      - Floor tiles (clean vs. littered variants)
+      - Reading tables, study areas, children's section decor
+      - Book objects (small sprite, genre color coding)
+  [ ] UI art pass
+      - Chaos meter: themed as a library stamping machine or noise meter
+      - Inventory belt: styled as a book cart
+      - XP bar: themed as a library card punch
+      - Upgrade cards: card-style design with icons
+
+WEEK 15 — Audio
+
+  [ ] Sound effects
+      - Book pickup: satisfying thud or whoosh
+      - Book shelved: crisp click + small chime
+      - Chaos spike: rising library noise/chatter ambience
+      - Child intercept: surprised gasp + book drop thud
+      - Level up: gentle library bell
+      - Event warning: PA system crackle
+      - Game over: cacophonous noise crescendo
+      - Win: quiet, satisfied closing-time ambience
+  [ ] Music
+      - Early game: calm library jazz or lo-fi ambience
+      - Mid game: tempo increases subtly
+      - Late game: urgent, chaotic undercurrent
+      - Closing Time: triumphant resolution sting
+      - Boss events: brief intense musical overlay
+  [ ] Audio mixing
+      - Chaos meter drives ambient noise level dynamically
+      - Music layers in/out with game state
+
+WEEK 16 — Game feel (juice) and accessibility
+
+  [ ] Screen feedback
+      - Screen shake on high-chaos milestones (50%, 75%, 90%)
+      - Chaos meter pulse animation when above 70%
+      - Color shift on HUD as chaos increases (yellow → orange → red)
+  [ ] Particle effects
+      - Book pickup: small sparkle burst
+      - Book shelved: satisfying puff
+      - Child intercept: star burst
+      - Chaos cluster: visual haze/dust on large book piles
+  [ ] Accessibility options
+      - Colorblind mode: alternative color palette for chaos states
+      - Text size slider
+      - Reduced motion toggle (disables screen shake + heavy particles)
+      - Controller remapping
+
+  PHASE 5 MILESTONE: The game looks and sounds finished.
+  Every action has audio and visual feedback. Showing it to someone
+  unfamiliar with the project should immediately communicate tone and fun.
+
+--------------------------------------------------------------------------------
+PHASE 6 — QA, BALANCE & LAUNCH
+Weeks 17–20 | Goal: Playtesting, tuning, release build
+--------------------------------------------------------------------------------
+
+WEEK 17 — Alpha playtest
+
+  FOCUS AREAS (see Alpha Playtest Guide):
+  [ ] Chaos curve feel — does it ramp correctly over 30 minutes?
+  [ ] Core loop tension — clean vs. intercept decision actually exists?
+  [ ] Herding readability — do players discover it naturally?
+  [ ] Inventory pressure — does the 5-book start feel tight but fair?
+  [ ] 30-minute pacing — where do most players die?
+
+  METRICS TO TRACK:
+  [ ] Average survival time per session
+  [ ] Chaos % at death
+  [ ] Which upgrades are picked most / least frequently
+  [ ] Which child type causes the most game-ending chaos spikes
+  [ ] Whether players use interception or ignore children entirely
+  [ ] First-time player time-to-understand herding
+
+  SESSION STRUCTURE:
+  [ ] 5 playtester sessions minimum (diverse skill levels)
+  [ ] Each session: 2 runs minimum
+  [ ] Post-session survey: what felt unfair? what felt satisfying?
+  [ ] Record sessions if possible for post-review
+
+WEEK 18 — Balance pass
+
+  Based on alpha playtest data:
+
+  [ ] Chaos curve adjustments
+      - If average death is before minute 15: reduce early ramp speed
+      - If most players reach minute 28 easily: increase mid-game pressure
+      - Tune cluster chaos multiplier (currently untested at scale)
+
+  [ ] XP curve adjustments
+      - Early levels should come frequently (every 2–3 minutes early)
+      - Late levels should feel earned (every 5–6 minutes late)
+      - Adjust level thresholds if leveling feels too fast or too slow
+
+  [ ] Upgrade rebalancing
+      - Remove or rework any upgrade that is always or never picked
+      - Ensure Automation upgrades don't trivialize the game
+      - Ensure Mobility upgrades remain competitive vs. Collection
+
+  [ ] Child type frequency tuning
+      - Adjust spawn weight per child type per game phase
+      - Sugar Rush Kid should feel rare and scary, not spammy
+      - Teen Influencer should appear just often enough to be a priority
+
+  [ ] Boss event difficulty calibration
+      - Kindergarten (min 5): survivable with no upgrades
+      - Twin Tornadoes (min 10): requires good routing
+      - Summer Camp (min 15): genuinely dangerous
+      - Ultimate Troublemaker (min 29): climactic, not unfair
+
+WEEK 19 — Bug fix, final QA, and build preparation
+
+  [ ] Full regression pass (all systems)
+  [ ] Edge case testing
+      - Max inventory + all books in range
+      - All children on map simultaneously
+      - Chaos at 99% + win condition triggered simultaneously
+      - Upgrade interactions (e.g. Dewey Vacuum + Book Lasso together)
+  [ ] Performance testing
+      - 5,000 active book objects at minute 30 (target: 60fps)
+      - 50+ children on screen simultaneously
+      - LOD or culling strategy for off-screen objects if needed
+  [ ] Save system (if applicable)
+      - High score persistence
+      - Settings persistence
+  [ ] Platform-specific testing
+      - Controller input on all target platforms
+      - Resolution scaling (1080p, 1440p, 4K)
+      - Steam Deck compatibility (if targeting)
+
+WEEK 20 — Launch
+
+  [ ] Store page (Steam / itch.io)
+      - Capsule art, screenshots, trailer
+      - Store description (hook, features, child types overview)
+      - Tags: survival, roguelite, casual, strategy
+  [ ] Trailer cut (60–90 seconds)
+      - Hook: chaos meter rising
+      - Gameplay: shelving, herding, intercepting
+      - Boss event moment
+      - Closing Time win sequence
+  [ ] Release build
+      - Version number locked
+      - Crash reporting enabled
+      - Day-1 patch plan documented
+  [ ] Community
+      - Discord or forum set up for feedback
+      - Bug report template published
+      - Post-launch roadmap teased (new child types? new events?)
+
+  PHASE 6 MILESTONE: Game ships. Players outside the dev team
+  are playing it.
+
+--------------------------------------------------------------------------------
+POST-LAUNCH CONSIDERATIONS (future scope)
+--------------------------------------------------------------------------------
+
+  These are NOT in the 20-week scope but worth documenting for v1.1+:
+
+  [ ] New child types (e.g. The Collector — hoards rare books)
+  [ ] New library sections (second floor, outdoor reading garden)
+  [ ] Challenge runs (no upgrades, time attack, chaos starts at 50%)
+  [ ] Weekly events / modifiers (rotated chaos conditions)
+  [ ] Leaderboard integration
+  [ ] Achievements (shelve 1,000 books in one run, etc.)
+  [ ] Mobile port (touch controls for pickup radius, auto-movement)
+  [ ] Co-op mode (two librarians, shared chaos meter)
+
+--------------------------------------------------------------------------------
+TECH STACK RECOMMENDATION
+--------------------------------------------------------------------------------
+
+  Engine:         Godot 4.x (preferred for 2D, free, MIT license)
+                  OR Unity 2D (larger asset store, more tutorials)
+  Language:       GDScript (Godot) or C# (Unity)
+  Version control: Git + GitHub (private repo)
+  Project mgmt:  GitHub Issues or Trello (one card per task above)
+  Art:            Aseprite (pixel art) or Illustrator (vector)
+  Audio:          Audacity (SFX editing), LMMS or GarageBand (music)
+  Playtesting:    Google Forms (survey) + OBS (session recording)
+
+--------------------------------------------------------------------------------
+RISK LOG
+--------------------------------------------------------------------------------
+
+  HIGH — Chaos curve balance
+    The 500→5,000 book ramp is a design target, not a validated number.
+    This is the most likely system to need major tuning in Phase 6.
+    Mitigation: expose all scaling values as data (not hardcoded)
+    so they can be tuned without code changes.
+
+  MEDIUM — Herding discoverability
+    Players may not intuitively understand the flee radius mechanic.
+    Mitigation: brief animated tutorial hint on first run (skippable).
+    Test specifically for this in alpha playtest week 17.
+
+  MEDIUM — Performance at minute 30
+    5,000+ active book objects is a significant scene count.
+    Mitigation: implement object pooling for books in Phase 1,
+    not Phase 5. Retrofit is painful.
+
+  LOW — Upgrade power creep
+    Automation upgrades (Return Robot, Assistant Librarian) may
+    trivialize the game if stacked.
+    Mitigation: cap automation upgrade slots (max 2 per run) or
+    add diminishing returns for stacking same category.
+
+================================================================================
+  END OF DOCUMENT
+  Library Survivors Development Roadmap — v1.0
+================================================================================

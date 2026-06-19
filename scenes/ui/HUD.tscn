@@ -1,0 +1,122 @@
+[gd_scene load_steps=2 format=3 uid="uid://lib_survivors_hud"]
+
+[ext_resource type="Script" path="res://scripts/ui/HUD.gd" id="1_hud_script"]
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_hud_script")
+
+[node name="ChaosBar" type="Control" parent="."]
+anchors_preset = 0
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 0.0
+offset_top = 0.0
+offset_bottom = 36.0
+grow_horizontal = 2
+
+[node name="Background" type="TextureRect" parent="ChaosBar"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="FillBar" type="ProgressBar" parent="ChaosBar"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+min_value = 0.0
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="ChaosLabel" type="Label" parent="ChaosBar"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+text = "CHAOS  0%"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TimerDisplay" type="Label" parent="."]
+anchor_left = 0.0
+anchor_top = 0.0
+offset_right = 120.0
+offset_bottom = 36.0
+offset_top = 4.0
+offset_left = 8.0
+text = "00:00"
+theme_override_font_sizes/font_size = 28
+
+[node name="XPBar" type="Control" parent="."]
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 0.0
+offset_left = -220.0
+offset_right = -8.0
+offset_top = 4.0
+offset_bottom = 36.0
+
+[node name="Background" type="ColorRect" parent="XPBar"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.1, 0.1, 0.8)
+
+[node name="FillBar" type="ProgressBar" parent="XPBar"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+min_value = 0.0
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="LevelLabel" type="Label" parent="XPBar"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+text = "LVL 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="InventoryBelt" type="HBoxContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -120.0
+offset_right = 120.0
+offset_top = -52.0
+offset_bottom = -8.0
+alignment = 1
+
+[node name="ObjectiveTracker" type="VBoxContainer" parent="."]
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_right = 320.0
+offset_top = -120.0
+offset_bottom = -8.0
+
+[node name="EventBanner" type="Control" parent="."]
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -300.0
+offset_right = 300.0
+offset_top = 40.0
+offset_bottom = 76.0
+visible = false
+
+[node name="BannerLabel" type="Label" parent="EventBanner"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+text = "EVENT"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 20

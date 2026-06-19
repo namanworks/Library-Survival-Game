@@ -1,0 +1,62 @@
+[
+  {
+    "id": "find_missing_book",
+    "display_name": "Find the Missing Book!",
+    "description": "A specific book has gone missing. Return it to its shelf before time runs out!",
+    "time_limit": 60.0,
+    "completion_condition": "books_returned",
+    "target_count": 1,
+    "target_zone": null,
+    "xp_reward": 150,
+    "score_reward": 400,
+    "chaos_reduction_reward": 0.0
+  },
+  {
+    "id": "organize_childrens_section",
+    "display_name": "Clear the Children's Section!",
+    "description": "The children's section is a disaster. Clear all books from the floor in time!",
+    "time_limit": 90.0,
+    "completion_condition": "zone_cleared",
+    "target_count": -1,
+    "target_zone": "ChildrensSection",
+    "xp_reward": 120,
+    "score_reward": 300,
+    "chaos_reduction_reward": 5.0
+  },
+  {
+    "id": "restock_new_arrivals",
+    "display_name": "Restock the New Arrivals Shelf!",
+    "description": "New arrivals have been scattered. Collect and return them all before the deadline.",
+    "time_limit": 75.0,
+    "completion_condition": "books_returned",
+    "target_count": -1,
+    "target_zone": "NewArrivalsShelf",
+    "xp_reward": 100,
+    "score_reward": 250,
+    "chaos_reduction_reward": 0.0
+  },
+  {
+    "id": "clear_reading_area",
+    "display_name": "Clear the Reading Area!",
+    "description": "Readers can't sit down! Clear all books from the reading tables quickly.",
+    "time_limit": 60.0,
+    "completion_condition": "zone_cleared",
+    "target_count": -1,
+    "target_zone": "ReadingTables",
+    "xp_reward": 80,
+    "score_reward": 200,
+    "chaos_reduction_reward": 3.0
+  },
+  {
+    "id": "recover_rare_edition",
+    "display_name": "Recover the Rare Edition!",
+    "description": "A child has gotten their hands on a priceless rare book. Find and intercept them!",
+    "time_limit": -1.0,
+    "completion_condition": "specific_child_intercepted",
+    "target_count": 1,
+    "target_zone": null,
+    "xp_reward": 200,
+    "score_reward": 500,
+    "chaos_reduction_reward": 0.0
+  }
+]

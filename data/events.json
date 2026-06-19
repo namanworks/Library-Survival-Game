@@ -1,0 +1,240 @@
+[
+  {
+    "id": "spawn_rate_ramp_1",
+    "display_name": "Spawn Rate Increase",
+    "trigger_time": 120.0,
+    "is_boss": false,
+    "duration": -1,
+    "warning_time": 0.0,
+    "effects": [
+      { "type": "spawn_rate_mult", "value": 1.3, "target": "all" }
+    ],
+    "xp_reward": 0,
+    "banner_text": ""
+  },
+  {
+    "id": "kindergarten_field_trip",
+    "display_name": "Kindergarten Field Trip",
+    "trigger_time": 300.0,
+    "is_boss": true,
+    "duration": 90.0,
+    "warning_time": 5.0,
+    "effects": [
+      { "type": "spawn_wave", "value": 12.0, "target": "curious_child" },
+      { "type": "chaos_multiplier", "value": 2.0, "target": "all" }
+    ],
+    "xp_reward": 50,
+    "banner_text": "KINDERGARTEN FIELD TRIP INCOMING!"
+  },
+  {
+    "id": "story_hour",
+    "display_name": "Story Hour",
+    "trigger_time": 390.0,
+    "is_boss": false,
+    "duration": 60.0,
+    "warning_time": 5.0,
+    "effects": [
+      { "type": "spawn_rate_mult", "value": 1.5, "target": "all" },
+      { "type": "xp_multiplier", "value": 1.5, "target": "shelving" }
+    ],
+    "xp_reward": 50,
+    "banner_text": "STORY HOUR — Extra XP for shelving now!"
+  },
+  {
+    "id": "shelf_ramp_1",
+    "display_name": "New Arrivals",
+    "trigger_time": 480.0,
+    "is_boss": false,
+    "duration": -1,
+    "warning_time": 0.0,
+    "effects": [
+      { "type": "unlock_shelves", "value": 1500.0, "target": "all" }
+    ],
+    "xp_reward": 0,
+    "banner_text": ""
+  },
+  {
+    "id": "twin_tornadoes",
+    "display_name": "Twin Tornadoes",
+    "trigger_time": 600.0,
+    "is_boss": true,
+    "duration": 120.0,
+    "warning_time": 5.0,
+    "effects": [
+      { "type": "spawn_wave", "value": 2.0, "target": "book_fort_builder" },
+      { "type": "chaos_multiplier", "value": 2.0, "target": "all" }
+    ],
+    "xp_reward": 50,
+    "banner_text": "TWIN TORNADOES SPOTTED!"
+  },
+  {
+    "id": "rainy_day",
+    "display_name": "Rainy Day",
+    "trigger_time": 660.0,
+    "is_boss": false,
+    "duration": 90.0,
+    "warning_time": 5.0,
+    "effects": [
+      { "type": "chaos_multiplier", "value": 1.2, "target": "all" }
+    ],
+    "xp_reward": 50,
+    "banner_text": "RAINY DAY — More visitors seeking shelter!"
+  },
+  {
+    "id": "summer_camp_visit",
+    "display_name": "Summer Camp Visit",
+    "trigger_time": 900.0,
+    "is_boss": true,
+    "duration": 120.0,
+    "warning_time": 5.0,
+    "effects": [
+      { "type": "spawn_wave", "value": 8.0, "target": "all" },
+      { "type": "chaos_multiplier", "value": 3.0, "target": "all" }
+    ],
+    "xp_reward": 50,
+    "banner_text": "SUMMER CAMP VISIT — ALL HANDS ON DECK!"
+  },
+  {
+    "id": "summer_reading_challenge",
+    "display_name": "Summer Reading Challenge",
+    "trigger_time": 990.0,
+    "is_boss": false,
+    "duration": 90.0,
+    "warning_time": 5.0,
+    "effects": [
+      { "type": "rare_books_appear", "value": 5.0, "target": "all" }
+    ],
+    "xp_reward": 50,
+    "banner_text": "SUMMER READING CHALLENGE — Rare books spotted!"
+  },
+  {
+    "id": "boldness_ramp_1",
+    "display_name": "Boldness Increase",
+    "trigger_time": 1080.0,
+    "is_boss": false,
+    "duration": -1,
+    "warning_time": 0.0,
+    "effects": [
+      { "type": "boldness_multiplier", "value": 0.65, "target": "all" }
+    ],
+    "xp_reward": 0,
+    "banner_text": ""
+  },
+  {
+    "id": "book_fair",
+    "display_name": "Book Fair",
+    "trigger_time": 1140.0,
+    "is_boss": false,
+    "duration": 60.0,
+    "warning_time": 5.0,
+    "effects": [
+      { "type": "open_shop", "value": 1.0, "target": "all" }
+    ],
+    "xp_reward": 0,
+    "banner_text": "BOOK FAIR — Spend your score points!"
+  },
+  {
+    "id": "shelf_ramp_2",
+    "display_name": "Late Arrivals",
+    "trigger_time": 1200.0,
+    "is_boss": false,
+    "duration": -1,
+    "warning_time": 0.0,
+    "effects": [
+      { "type": "unlock_shelves", "value": 3000.0, "target": "all" }
+    ],
+    "xp_reward": 0,
+    "banner_text": ""
+  },
+  {
+    "id": "twin_tornadoes_2",
+    "display_name": "Twin Tornadoes II",
+    "trigger_time": 1260.0,
+    "is_boss": true,
+    "duration": 120.0,
+    "warning_time": 5.0,
+    "effects": [
+      { "type": "spawn_wave", "value": 2.0, "target": "book_fort_builder" },
+      { "type": "speed_multiplier", "value": 1.3, "target": "book_fort_builder" },
+      { "type": "chaos_multiplier", "value": 2.5, "target": "all" }
+    ],
+    "xp_reward": 50,
+    "banner_text": "TWIN TORNADOES ARE BACK — AND FASTER!"
+  },
+  {
+    "id": "school_field_trip",
+    "display_name": "School Field Trip",
+    "trigger_time": 1380.0,
+    "is_boss": false,
+    "duration": 90.0,
+    "warning_time": 5.0,
+    "effects": [
+      { "type": "spawn_wave", "value": 10.0, "target": "speed_reader" },
+      { "type": "spawn_wave", "value": 6.0, "target": "curious_child" }
+    ],
+    "xp_reward": 50,
+    "banner_text": "SCHOOL FIELD TRIP — A school bus has pulled up!"
+  },
+  {
+    "id": "story_hour_surge",
+    "display_name": "Story Hour Surge",
+    "trigger_time": 1500.0,
+    "is_boss": true,
+    "duration": 90.0,
+    "warning_time": 5.0,
+    "effects": [
+      { "type": "spawn_wave", "value": 4.0, "target": "teen_influencer" },
+      { "type": "spawn_rate_mult", "value": 2.0, "target": "all" },
+      { "type": "chaos_multiplier", "value": 2.5, "target": "all" }
+    ],
+    "xp_reward": 50,
+    "banner_text": "STORY HOUR SURGE — Influencers everywhere!"
+  },
+  {
+    "id": "boldness_max_ramp",
+    "display_name": "Maximum Boldness",
+    "trigger_time": 1560.0,
+    "is_boss": false,
+    "duration": -1,
+    "warning_time": 0.0,
+    "effects": [
+      { "type": "boldness_multiplier", "value": 0.35, "target": "all" }
+    ],
+    "xp_reward": 0,
+    "banner_text": ""
+  },
+  {
+    "id": "ultimate_troublemaker",
+    "display_name": "Ultimate Troublemaker",
+    "trigger_time": 1740.0,
+    "is_boss": true,
+    "duration": 60.0,
+    "warning_time": 5.0,
+    "effects": [
+      { "type": "spawn_wave", "value": 1.0, "target": "curious_child" },
+      { "type": "spawn_wave", "value": 1.0, "target": "speed_reader" },
+      { "type": "spawn_wave", "value": 1.0, "target": "book_fort_builder" },
+      { "type": "spawn_wave", "value": 1.0, "target": "hide_and_seek_kid" },
+      { "type": "spawn_wave", "value": 1.0, "target": "sugar_rush_kid" },
+      { "type": "spawn_wave", "value": 1.0, "target": "teen_influencer" },
+      { "type": "speed_multiplier", "value": 1.5, "target": "all" },
+      { "type": "chaos_multiplier", "value": 3.0, "target": "all" }
+    ],
+    "xp_reward": 100,
+    "banner_text": "THE ULTIMATE TROUBLEMAKER HAS ARRIVED!"
+  },
+  {
+    "id": "closing_time",
+    "display_name": "Closing Time",
+    "trigger_time": 1800.0,
+    "is_boss": false,
+    "duration": 30.0,
+    "warning_time": 0.0,
+    "effects": [
+      { "type": "chaos_spike", "value": 15.0, "target": "all" },
+      { "type": "spawn_wave", "value": 8.0, "target": "all" }
+    ],
+    "xp_reward": 0,
+    "banner_text": "CLOSING TIME!"
+  }
+]

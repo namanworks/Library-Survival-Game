@@ -1,0 +1,33 @@
+[gd_scene load_steps=6 format=3 uid="uid://lib_survivors_librarycat"]
+
+[ext_resource type="Script" path="res://scripts/entities/LibraryCat.gd" id="1_cat_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/cat.png" id="2_cat_tex"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(16.0, 12.0)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_influence"]
+radius = 150.0
+
+[node name="LibraryCat" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1_cat_script")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_cat_tex")
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+path_desired_distance = 16.0
+target_desired_distance = 32.0
+max_speed = 35.0
+
+[node name="InfluenceArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 8
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InfluenceArea"]
+shape = SubResource("CircleShape2D_influence")
