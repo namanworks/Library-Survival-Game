@@ -1,6 +1,6 @@
 # Library Survivors
 
-> A 2D top-down survival game built in **Godot 4.6 / GDScript** — inspired by the *Vampire Survivors* genre — where you play a librarian fighting wave-escalating chaos from mischievous children over a timed 30-minute run.
+> A 2D top-down survival game built in **Godot 4.6 / GDScript** — where you play a librarian fighting wave-escalating chaos from mischievous children over a timed 30-minute run.
 
 ![Godot](https://img.shields.io/badge/Godot-4.6-blue?logo=godot-engine) ![Language](https://img.shields.io/badge/Language-GDScript-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
