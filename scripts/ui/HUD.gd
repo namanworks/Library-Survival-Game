@@ -38,7 +38,10 @@ func _ready() -> void:
 	EventManager.event_started.connect(_on_event_started)
 	EventManager.event_warning.connect(_on_event_warning)
 
-	# Wire inventory (after librarian is ready)
+	# Build inventory slots immediately so they're visible from the start
+	_rebuild_inventory_slots()
+
+	# Wire inventory signal (retry each frame until Librarian is in the scene)
 	call_deferred("_connect_inventory")
 
 	_hide_banner()
@@ -172,7 +175,14 @@ func _connect_inventory() -> void:
 	var librarian: Node = get_tree().get_first_node_in_group("librarian")
 	if librarian and librarian.has_node("Inventory"):
 		var inventory: Node = librarian.get_node("Inventory")
-		inventory.inventory_changed.connect(_refresh_inventory)
+		if not inventory.inventory_changed.is_connected(_refresh_inventory):
+			inventory.inventory_changed.connect(_refresh_inventory)
+		# Immediately refresh so current state is shown
+		_refresh_inventory(inventory.get_all_books(), inventory.capacity)
+	else:
+		# Librarian not ready yet — retry next frame
+		await get_tree().process_frame
+		_connect_inventory()
 
 # ── Event Banner ───────────────────────────────────────────────────────────────
 func _show_banner(text: String, is_boss: bool) -> void:
